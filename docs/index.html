@@ -13,22 +13,24 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap">
 <style>
+
 /* Layout: one narrow column like a farmer's ledger book — balance band on top, entry sheet, then the ledger by month */
 :root{
   --bg:#f3f1e8; --surface:#fffdf6; --line:#ddd8c6; --fg:#23271c; --muted:#6d6f5f;
   --accent:#3f6b2a; --accent-ink:#ffffff; --in:#2f7d3a; --in-soft:#e2efd9; --out:#b2442c; --out-soft:#f7e1d9;
   --band:#2f4a22; --band-fg:#f1f4e6; --band-muted:#c3cfaa;
+  --summer:#a86a0c; --summer-soft:#f6e7c8; --winter:#2f6d8c; --winter-soft:#dcebf2;
   --display:"Reem Kufi","Tajawal",system-ui,sans-serif;
   --body:"Tajawal",system-ui,"Segoe UI",Tahoma,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#171a13; --surface:#20241a; --line:#363b2c; --fg:#e8eadc; --muted:#a0a48e;
   --accent:#8dbb5f; --accent-ink:#13170e; --in:#86c873; --in-soft:#25351d; --out:#ec8a6f; --out-soft:#3b231b;
-  --band:#24371a; --band-fg:#eef2df; --band-muted:#a9b98c; color-scheme:dark}}
+  --band:#24371a; --band-fg:#eef2df; --band-muted:#a9b98c; --summer:#e3b25a; --summer-soft:#3a2e14; --winter:#7fbfe0; --winter-soft:#183040; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#171a13; --surface:#20241a; --line:#363b2c; --fg:#e8eadc; --muted:#a0a48e;
   --accent:#8dbb5f; --accent-ink:#13170e; --in:#86c873; --in-soft:#25351d; --out:#ec8a6f; --out-soft:#3b231b;
-  --band:#24371a; --band-fg:#eef2df; --band-muted:#a9b98c; color-scheme:dark}
+  --band:#24371a; --band-fg:#eef2df; --band-muted:#a9b98c; --summer:#e3b25a; --summer-soft:#3a2e14; --winter:#7fbfe0; --winter-soft:#183040; color-scheme:dark}
 
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -117,9 +119,42 @@ ul.entries{list-style:none;margin:0;padding:0}
 .login p{margin:0;color:var(--muted)}
 #login-email{direction:ltr;text-align:left}
 #login-pass{direction:ltr;text-align:left}
+
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+.sec-head h2{margin:0}
+.ghost{font:inherit;font-weight:700;font-size:.9rem;border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer}
+.plots{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.plot-card{display:grid;gap:4px;text-align:start;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;width:100%}
+.plot-card:active{transform:translateY(1px)}
+.plot-card .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.plot-card .name{font-family:var(--display);font-size:1.15rem;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.plot-card .sub{font-size:.88rem;color:var(--muted)}
+.plot-card .nets{display:flex;justify-content:space-between;gap:8px;margin-top:4px;padding-top:8px;border-top:1px solid var(--line);font-size:.85rem;color:var(--muted)}
+.plot-card .nets b{font-size:1rem}
+.pos{color:var(--in)} .neg{color:var(--out)}
+.chip{font-size:.75rem;font-weight:700;padding:2px 10px;border-radius:999px;white-space:nowrap}
+.chip.summer{background:var(--summer-soft);color:var(--summer)}
+.chip.winter{background:var(--winter-soft);color:var(--winter)}
+.back{font:inherit;font-size:.9rem;background:none;border:0;color:var(--band-muted);padding:0;cursor:pointer;justify-self:start}
+.plot-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.92rem;color:var(--band-muted)}
+.perfed{font-size:.88rem;color:var(--band-muted)}
+.perfed b{color:var(--band-fg)}
+.tag{font-size:.75rem;color:var(--accent);font-weight:700;display:block}
+.toggle button[aria-pressed="true"].s-sum{background:var(--summer-soft);color:var(--summer)}
+.toggle button[aria-pressed="true"].s-win{background:var(--winter-soft);color:var(--winter)}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.form-acts{display:flex;gap:8px}
+.form-acts .primary{flex:1}
+.plain{font:inherit;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:12px 16px;cursor:pointer}
+.danger{font:inherit;font-weight:700;border:1px solid var(--out);background:transparent;color:var(--out);border-radius:10px;padding:10px 16px;cursor:pointer}
+.plot-actions{display:flex;gap:8px;flex-wrap:wrap}
+.empty.small{padding:16px}
+
 </style>
 </head>
 <body>
+<div id="boot" class="login"><p>جارٍ التحميل…</p></div>
+
 <div id="login" class="login" hidden>
   <h1>دفتر حسابات الأرض</h1>
   <p>ادخل بالإيميل والباسورد اللي اتعملولك. الحسابات مشتركة بينك وبين شريكك.</p>
@@ -130,15 +165,18 @@ ul.entries{list-style:none;margin:0;padding:0}
     <p class="msg" id="login-msg" aria-live="polite"></p>
   </form>
 </div>
-<div id="boot" class="login"><p>جارٍ التحميل…</p></div>
+
 <div id="app" hidden>
 <header class="band">
   <div class="wrap">
     <div class="userbar"><span class="sync" id="sync"><i></i><span id="sync-t">جارٍ الاتصال…</span></span><button type="button" id="logout">خروج</button></div>
-    <div class="brand"><h1>دفتر حسابات الأرض</h1><span class="season" id="today"></span></div>
+    <button type="button" class="back" id="back" hidden>→ كل القطع</button>
+    <div class="brand"><h1 id="title">دفتر حسابات الأرض</h1><span class="season" id="today"></span></div>
+    <div class="plot-meta" id="plot-meta" hidden></div>
     <div>
-      <div class="bal-label">الرصيد (الوارد − المنصرف)</div>
+      <div class="bal-label" id="bal-label">الرصيد الكلي (الوارد − المنصرف)</div>
       <div class="bal"><span class="num" id="bal">0</span><small>جنيه</small></div>
+      <div class="perfed" id="perfed" hidden></div>
     </div>
     <div class="split">
       <div><span>إجمالي الوارد</span><b class="num" id="tin">0</b></div>
@@ -149,6 +187,42 @@ ul.entries{list-style:none;margin:0;padding:0}
 
 <main>
 <div class="wrap">
+
+  <section id="plot-form-sec" hidden aria-labelledby="pf-h">
+    <h2 id="pf-h">قطعة جديدة</h2>
+    <form class="sheet" id="plot-form" novalidate>
+      <label>اسم القطعة<input id="p-name" autocomplete="off" placeholder="مثال: القطعة البحرية"></label>
+      <div class="toggle" role="group" aria-label="الموسم">
+        <button type="button" class="s-win" id="p-win" aria-pressed="true">شتوي</button>
+        <button type="button" class="s-sum" id="p-sum" aria-pressed="false">صيفي</button>
+      </div>
+      <div class="row">
+        <label>نوع الزرعة<input id="p-crop" list="crops" autocomplete="off" placeholder="مثال: قمح"></label>
+        <label>سنة الموسم<input id="p-year" inputmode="numeric" autocomplete="off"></label>
+      </div>
+      <datalist id="crops"></datalist>
+      <div class="row">
+        <label>المساحة (فدان)<input id="p-fed" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+        <label>و (قيراط)<input id="p-qir" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      </div>
+      <div class="form-acts">
+        <button class="primary" type="submit" id="p-save">حفظ القطعة</button>
+        <button class="plain" type="button" id="p-cancel">إلغاء</button>
+      </div>
+      <p class="msg" id="p-msg" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <section id="plots-sec" aria-labelledby="plots-h">
+    <div class="sec-head"><h2 id="plots-h">القطع</h2><button type="button" class="ghost" id="add-plot">+ قطعة جديدة</button></div>
+    <div class="tabs" role="group" aria-label="الموسم" id="season-tabs">
+      <button type="button" data-s="all" aria-pressed="true">الكل</button>
+      <button type="button" data-s="winter" aria-pressed="false">شتوي</button>
+      <button type="button" data-s="summer" aria-pressed="false">صيفي</button>
+    </div>
+    <div class="plots" id="plots"></div>
+  </section>
+
   <section aria-labelledby="add-h">
     <h2 id="add-h">تسجيل حركة</h2>
     <form class="sheet" id="form" novalidate>
@@ -159,6 +233,7 @@ ul.entries{list-style:none;margin:0;padding:0}
       <label>المبلغ بالجنيه
         <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0">
       </label>
+      <label id="plot-field">القطعة<select id="e-plot"></select></label>
       <div class="row">
         <label>البند<select id="cat"></select></label>
         <label>التاريخ<input type="date" id="date"></label>
@@ -171,7 +246,7 @@ ul.entries{list-style:none;margin:0;padding:0}
 
   <section aria-labelledby="led-h">
     <h2 id="led-h">الدفتر</h2>
-    <div class="tabs" role="group" aria-label="عرض">
+    <div class="tabs" role="group" aria-label="عرض" id="type-tabs">
       <button type="button" data-f="all" aria-pressed="true">الكل</button>
       <button type="button" data-f="in" aria-pressed="false">الوارد</button>
       <button type="button" data-f="out" aria-pressed="false">المنصرف</button>
@@ -182,6 +257,18 @@ ul.entries{list-style:none;margin:0;padding:0}
   <section aria-labelledby="cat-h" id="cat-sec" hidden>
     <h2 id="cat-h">المصاريف حسب البند</h2>
     <div class="cats" id="cats"></div>
+  </section>
+
+  <section id="plot-admin" hidden aria-labelledby="pa-h">
+    <h2 id="pa-h">إعدادات القطعة</h2>
+    <div class="plot-actions">
+      <button type="button" class="plain" id="edit-plot">تعديل البيانات</button>
+      <button type="button" class="danger" id="del-plot">حذف القطعة</button>
+    </div>
+    <div id="del-confirm" class="confirm-box" hidden>
+      <span id="del-text"></span>
+      <div class="acts"><button type="button" class="go" id="d-yes">حذف</button><button type="button" id="d-no">إلغاء</button></div>
+    </div>
   </section>
 
   <section aria-labelledby="tools-h">
@@ -201,7 +288,6 @@ ul.entries{list-style:none;margin:0;padding:0}
   <p class="note-bar" id="status"></p>
 </div>
 </main>
-
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -212,30 +298,135 @@ const CATS={
   in:["بيع محصول","بيع تبن / مخلفات","إيجار أرض (محصل)","دعم / تعويض","وارد آخر"],
   out:["تقاوي / شتلات","أسمدة","مبيدات","ري / سولار / كهرباء","عمالة / يوميات","حرث وخدمة آلات","حصاد ودراس","نقل","إيجار أرض (مدفوع)","صيانة","منصرف آخر"]
 };
+const CROPS={
+  winter:["قمح","برسيم","فول بلدي","بنجر سكر","بصل","ثوم","شعير","بطاطس","كتان"],
+  summer:["ذرة شامية","أرز","قطن","ذرة رفيعة","طماطم","فول سوداني","سمسم","بطيخ","فلفل"]
+};
 const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const $=id=>document.getElementById(id);
 const fmt=n=>Math.round(n).toLocaleString("en-US");
+const signed=n=>(n<0?"−":"")+fmt(Math.abs(n));
 const Bridge=window.AndroidBridge||null;
-let type="out", filter="all", entries=[], pendingDel=null, pendingRestore=null, col=null, me=null, unsub=null;
+const normDigits=s=>String(s).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[٫,،]/g,".");
+const shortName=email=>(email||"").split("@")[0];
+
+let type="out", filter="all", seasonFilter="all";
+let entries=[], plots=[], plotsLoaded=false;
+let pendingDel=null, pendingRestore=null, editingPlot=null, pSeason="winter";
+let col=null, plotsCol=null, fs=null, me=null, unsubs=[];
+
+function h(tag,props,...kids){
+  const el=document.createElement(tag);
+  if(props)for(const [k,v] of Object.entries(props)){
+    if(v==null||v===false)continue;
+    if(k==="class")el.className=v;
+    else if(k==="text")el.textContent=v;
+    else if(k.startsWith("on"))el.addEventListener(k.slice(2),v);
+    else el.setAttribute(k,v===true?"":v);
+  }
+  for(const c of kids.flat()){if(c==null||c===false)continue;el.append(c.nodeType?c:document.createTextNode(String(c)))}
+  return el;
+}
 
 if("serviceWorker" in navigator && location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
 
 function show(which){$("boot").hidden=which!=="boot";$("login").hidden=which!=="login";$("app").hidden=which!=="app"}
-function valid(e){return e&&typeof e.amount==="number"&&e.amount>0&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)&&(e.type==="in"||e.type==="out")}
-const shortName=email=>(email||"").split("@")[0];
-
+function validEntry(e){return e&&typeof e.amount==="number"&&e.amount>0&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)&&(e.type==="in"||e.type==="out")}
 function todayISO(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 $("date").value=todayISO();
 {const d=new Date();$("today").textContent=d.getDate()+" "+MONTHS[d.getMonth()]+" "+d.getFullYear()}
 
-function fillCats(){$("cat").innerHTML=CATS[type].map(c=>`<option>${c}</option>`).join("")}
+/* ---------- plot helpers ---------- */
+function areaText(q){q=+q||0;const f=Math.floor(q/24),r=Math.round(q-f*24);const p=[];if(f)p.push(f+" فدان");if(r)p.push(r+" قيراط");return p.join(" و ")||"بدون مساحة"}
+function seasonText(p){const y=+p.year||new Date().getFullYear();return p.season==="summer"?"صيفي "+y:"شتوي "+y+"/"+String(y+1).slice(2)}
+function defaultYear(season){const d=new Date();return season==="winter"&&d.getMonth()<8?d.getFullYear()-1:d.getFullYear()}
+const plotById=id=>plots.find(p=>p.id===id)||null;
+function totals(list){let i=0,o=0;for(const e of list){if(e.type==="in")i+=e.amount;else o+=e.amount}return{tin:i,tout:o,net:i-o}}
+function sortPlots(a,b){return (+b.year||0)-(+a.year||0)||(a.season===b.season?0:a.season==="summer"?-1:1)||String(a.name).localeCompare(String(b.name),"ar")}
+
+/* ---------- routing ---------- */
+function currentPlotId(){const m=location.hash.match(/^#plot-([A-Za-z0-9_-]+)$/);return m?m[1]:null}
+window.addEventListener("hashchange",()=>{pendingDel=null;closePlotForm();$("del-confirm").hidden=true;render();window.scrollTo(0,0)});
+$("back").onclick=()=>{if(history.length>1&&currentPlotId())history.back();else location.hash=""};
+
+/* ---------- entry form ---------- */
+function fillCats(){$("cat").replaceChildren(...CATS[type].map(c=>h("option",{text:c})))}
 function setType(t){type=t;$("t-in").setAttribute("aria-pressed",t==="in");$("t-out").setAttribute("aria-pressed",t==="out");fillCats()}
 $("t-in").onclick=()=>setType("in");$("t-out").onclick=()=>setType("out");fillCats();
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
-  filter=b.dataset.f;document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
-const normDigits=s=>s.replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[٫,،]/g,".");
+document.querySelectorAll("#type-tabs button").forEach(b=>b.onclick=()=>{
+  filter=b.dataset.f;document.querySelectorAll("#type-tabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
+document.querySelectorAll("#season-tabs button").forEach(b=>b.onclick=()=>{
+  seasonFilter=b.dataset.s;document.querySelectorAll("#season-tabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
 
-function setSync(state,text){const s=$("sync");s.className="sync "+state;$("sync-t").textContent=text}
+function fillPlotSelect(){
+  const sel=$("e-plot"), keep=sel.value;
+  sel.replaceChildren(h("option",{value:"",text:"عام (مش تابع لقطعة)"}),
+    ...[...plots].sort(sortPlots).map(p=>h("option",{value:p.id,text:p.name+" · "+(p.crop||"")+" · "+seasonText(p)})));
+  if([...sel.options].some(o=>o.value===keep))sel.value=keep;
+}
+
+$("form").addEventListener("submit",e=>{
+  e.preventDefault();if(!col||!me)return;
+  const amt=parseFloat(normDigits($("amount").value.trim()));
+  if(!(amt>0)){$("msg").textContent="اكتب المبلغ بالأرقام، أكبر من صفر.";$("amount").focus();return}
+  if(!$("date").value){$("msg").textContent="اختار التاريخ.";return}
+  const pid=currentPlotId()&&plotById(currentPlotId())?currentPlotId():$("e-plot").value;
+  col.add({type,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),plotId:pid||"",created:Date.now(),by:me.email||""})
+    .catch(err=>{$("msg").textContent=friendlyErr(err)});
+  $("amount").value="";$("note").value="";$("msg").textContent="";
+});
+
+/* ---------- plot form ---------- */
+function setPSeason(s,keepYear){pSeason=s;$("p-win").setAttribute("aria-pressed",s==="winter");$("p-sum").setAttribute("aria-pressed",s==="summer");
+  $("crops").replaceChildren(...CROPS[s].map(c=>h("option",{value:c})));
+  if(!keepYear)$("p-year").value=defaultYear(s);}
+$("p-win").onclick=()=>setPSeason("winter");$("p-sum").onclick=()=>setPSeason("summer");
+function openPlotForm(p){
+  editingPlot=p||null;
+  $("pf-h").textContent=p?"تعديل القطعة":"قطعة جديدة";
+  $("p-name").value=p?p.name:"";$("p-crop").value=p?p.crop||"":"";
+  setPSeason(p?p.season:"winter",!!p);if(p)$("p-year").value=p.year;
+  const q=p?+p.areaQirat||0:0;$("p-fed").value=p?Math.floor(q/24):"";$("p-qir").value=p?Math.round(q-Math.floor(q/24)*24)||"":"";
+  $("p-msg").textContent="";$("plot-form-sec").hidden=false;
+  $("plot-form-sec").scrollIntoView({behavior:"smooth",block:"start"});$("p-name").focus({preventScroll:true});
+}
+function closePlotForm(){$("plot-form-sec").hidden=true;editingPlot=null}
+$("add-plot").onclick=()=>openPlotForm(null);
+$("p-cancel").onclick=closePlotForm;
+$("edit-plot").onclick=()=>{const p=plotById(currentPlotId());if(p)openPlotForm(p)};
+$("plot-form").addEventListener("submit",e=>{
+  e.preventDefault();if(!plotsCol||!me)return;
+  const name=$("p-name").value.trim(), crop=$("p-crop").value.trim();
+  const fed=parseFloat(normDigits($("p-fed").value||"0"))||0, qir=parseFloat(normDigits($("p-qir").value||"0"))||0;
+  const year=parseInt(normDigits($("p-year").value),10);
+  const area=Math.round(fed*24+qir);
+  if(!name){$("p-msg").textContent="اكتب اسم القطعة.";$("p-name").focus();return}
+  if(!(area>0)){$("p-msg").textContent="اكتب المساحة بالفدان أو القيراط.";$("p-fed").focus();return}
+  if(qir>=24){$("p-msg").textContent="القيراط لازم يكون أقل من 24 (الفدان = 24 قيراط).";return}
+  if(!(year>2000&&year<2100)){$("p-msg").textContent="اكتب سنة الموسم، مثلاً "+defaultYear(pSeason)+".";return}
+  const data={name,crop,season:pSeason,year,areaQirat:area};
+  if(editingPlot){
+    plotsCol.doc(editingPlot.id).set(data,{merge:true}).catch(err=>{$("status").textContent=friendlyErr(err)});
+    closePlotForm();render();
+  }else{
+    const ref=plotsCol.doc();
+    plots.push({id:ref.id,...data});fillPlotSelect(); // show the new page at once; the snapshot replaces this
+    ref.set({...data,created:Date.now(),by:me.email||""}).catch(err=>{$("status").textContent=friendlyErr(err)});
+    closePlotForm();location.hash="plot-"+ref.id;
+  }
+});
+$("del-plot").onclick=()=>{
+  const id=currentPlotId(),p=plotById(id);if(!p)return;
+  const n=entries.filter(e=>e.plotId===id).length;
+  $("del-text").textContent="هتتمسح القطعة \""+p.name+"\"."+(n?" الحركات المسجّلة عليها ("+n+") هتفضل في الدفتر العام.":"");
+  $("del-confirm").hidden=false;
+};
+$("d-no").onclick=()=>{$("del-confirm").hidden=true};
+$("d-yes").onclick=()=>{const id=currentPlotId();$("del-confirm").hidden=true;
+  plotsCol.doc(id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});location.hash=""};
+
+/* ---------- Firebase ---------- */
+function setSync(state,text){$("sync").className="sync "+state;$("sync-t").textContent=text}
 function friendlyErr(e){
   const c=(e&&e.code)||"";
   if(c.includes("permission-denied"))return "الحساب ده مالوش صلاحية على الدفتر. اتأكد إن الإيميل متضاف في قواعد الأمان.";
@@ -246,14 +437,13 @@ function friendlyErr(e){
   return "حصلت مشكلة: "+(e&&e.message||c);
 }
 
-/* ---------- Firebase ---------- */
 if(!window.FIREBASE_CONFIG||!window.firebase){
-  $("boot").innerHTML='<p>التطبيق لسه مش متوصّل بقاعدة البيانات، أو مفيش نت في أول تشغيل.</p>';
+  $("boot").replaceChildren(h("p",{text:"التطبيق لسه مش متوصّل بقاعدة البيانات، أو مفيش نت في أول تشغيل."}));
 }else{
   firebase.initializeApp(window.FIREBASE_CONFIG);
-  const auth=firebase.auth(), fs=firebase.firestore();
+  const auth=firebase.auth();fs=firebase.firestore();
   fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
-  col=fs.collection("entries");
+  col=fs.collection("entries");plotsCol=fs.collection("plots");
 
   $("login-form").addEventListener("submit",async e=>{
     e.preventDefault();$("login-msg").textContent="";
@@ -266,98 +456,133 @@ if(!window.FIREBASE_CONFIG||!window.firebase){
   $("logout").onclick=()=>{auth.signOut()};
 
   auth.onAuthStateChanged(u=>{
-    if(unsub){unsub();unsub=null}
-    me=u;
-    if(!u){entries=[];show("login");return}
-    show("app");setSync("","جارٍ التحميل…");
-    $("ledger").innerHTML='<div class="empty">جارٍ تحميل الحسابات…</div>';
-    unsub=col.onSnapshot({includeMetadataChanges:true},snap=>{
-      entries=snap.docs.map(d=>({id:d.id,...d.data()})).filter(valid);
-      const pending=snap.metadata.hasPendingWrites, cached=snap.metadata.fromCache;
-      if(pending)setSync("off","في تعديلات لسه ماتبعتتش");
-      else if(cached)setSync("off","أوفلاين — هيتزامن لما النت يرجع");
+    unsubs.forEach(f=>f());unsubs=[];me=u;
+    if(!u){entries=[];plots=[];plotsLoaded=false;show("login");return}
+    show("app");setSync("","جارٍ التحميل…");render();
+    const onErr=err=>{setSync("off","مش متصل");$("status").textContent=friendlyErr(err)};
+    unsubs.push(col.onSnapshot({includeMetadataChanges:true},snap=>{
+      entries=snap.docs.map(d=>({id:d.id,...d.data()})).filter(validEntry);
+      if(snap.metadata.hasPendingWrites)setSync("off","في تعديلات لسه ماتبعتتش");
+      else if(snap.metadata.fromCache)setSync("off","أوفلاين — هيتزامن لما النت يرجع");
       else setSync("ok","متزامن");
       render();
-    },err=>{setSync("off","مش متصل");$("ledger").innerHTML='<div class="empty"></div>';$("ledger").firstChild.textContent=friendlyErr(err)});
+    },onErr));
+    unsubs.push(plotsCol.onSnapshot(snap=>{
+      plots=snap.docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.name);
+      plotsLoaded=true;fillPlotSelect();render();
+    },onErr));
   });
 }
 
-$("form").addEventListener("submit",e=>{
-  e.preventDefault();
-  if(!col||!me)return;
-  const amt=parseFloat(normDigits($("amount").value.trim()));
-  if(!(amt>0)){$("msg").textContent="اكتب المبلغ بالأرقام، أكبر من صفر.";$("amount").focus();return}
-  if(!$("date").value){$("msg").textContent="اختار التاريخ.";return}
-  // fire-and-forget: Firestore saves locally at once and syncs when online
-  col.add({type,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),created:Date.now(),by:me.email||""})
-    .catch(err=>{$("msg").textContent=friendlyErr(err)});
-  $("amount").value="";$("note").value="";$("msg").textContent="";
-});
-
+/* ---------- render ---------- */
 function render(){
-  let tin=0,tout=0;const byCat={};
-  for(const e of entries){if(e.type==="in")tin+=e.amount;else{tout+=e.amount;byCat[e.cat]=(byCat[e.cat]||0)+e.amount}}
-  $("tin").textContent=fmt(tin);$("tout").textContent=fmt(tout);
-  const bal=tin-tout;$("bal").textContent=(bal<0?"−":"")+fmt(Math.abs(bal));
+  const pid=currentPlotId(), plot=pid?plotById(pid):null;
+  if(pid&&!plot&&plotsLoaded){location.hash="";return}
+  const onPlot=!!pid;
+  const scope=onPlot?entries.filter(e=>e.plotId===pid):entries;
+  const t=totals(scope);
 
-  const list=entries.filter(e=>filter==="all"||e.type===filter)
-    .sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
-  if(!entries.length){$("ledger").innerHTML='<div class="empty">لسه مفيش حركات. سجّل أول مصروف أو وارد من الفورم اللي فوق، وهيظهر هنا عندك وعند شريكك.</div>'}
-  else if(!list.length){$("ledger").innerHTML='<div class="empty">مفيش حركات من النوع ده.</div>'}
-  else{
-    const groups={};
-    for(const e of list){const k=e.date.slice(0,7);(groups[k]=groups[k]||[]).push(e)}
-    $("ledger").innerHTML=Object.keys(groups).map(k=>{
-      const [y,m]=k.split("-");const g=groups[k];
-      const net=g.reduce((s,e)=>s+(e.type==="in"?e.amount:-e.amount),0);
-      return `<div class="month"><div class="mhead"><span>${MONTHS[+m-1]} ${y}</span>
-        <span class="net ${net>=0?"amt in":"amt out"}">صافي <span class="num">${net<0?"−":""}${fmt(Math.abs(net))}</span></span></div>
-        <ul class="entries">${g.map(e=>`<li class="entry">
-          <div class="day"><b class="num">${+e.date.slice(8)}</b>${MONTHS[+m-1].slice(0,3)}</div>
-          <div class="what"><span class="cat"></span><span class="note"></span><span class="who"></span></div>
-          <div><div class="amt ${e.type}"><span class="num">${e.type==="in"?"+":"−"}${fmt(e.amount)}</span></div>
-          <button type="button" class="del${pendingDel===e.id?" confirm":""}" data-id="${e.id}">${pendingDel===e.id?"تأكيد الحذف؟":"حذف"}</button></div>
-        </li>`).join("")}</ul></div>`}).join("");
-    const items=$("ledger").querySelectorAll(".entry");let i=0;
-    for(const k of Object.keys(groups))for(const e of groups[k]){const li=items[i++];
-      li.querySelector(".cat").textContent=e.cat||"";li.querySelector(".note").textContent=e.note||"";
-      li.querySelector(".who").textContent=e.by?("سجّلها: "+shortName(e.by)):"";
-      if(e.note)li.querySelector(".note").style.display="block";}
-    $("ledger").querySelectorAll(".del").forEach(b=>b.onclick=()=>{
-      const id=b.dataset.id;
-      if(pendingDel!==id){pendingDel=id;render();return}
-      pendingDel=null;col.doc(id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
-    });
-  }
-  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  // header
+  $("back").hidden=!onPlot;
+  $("title").textContent=plot?plot.name:"دفتر حسابات الأرض";
+  $("today").hidden=onPlot;
+  $("plot-meta").hidden=!plot;
+  if(plot)$("plot-meta").replaceChildren(h("span",{class:"chip "+plot.season,text:seasonText(plot)}),
+    h("span",{text:(plot.crop||"بدون زرعة")+" · "+areaText(plot.areaQirat)}));
+  $("bal-label").textContent=onPlot?"صافي القطعة (الوارد − المنصرف)":"الرصيد الكلي (الوارد − المنصرف)";
+  $("tin").textContent=fmt(t.tin);$("tout").textContent=fmt(t.tout);$("bal").textContent=signed(t.net);
+  const fed=plot?(+plot.areaQirat||0)/24:0;
+  $("perfed").hidden=!(plot&&fed>0&&scope.length);
+  if(plot&&fed>0)$("perfed").replaceChildren("صافي الفدان: ",h("b",{class:"num",text:signed(t.net/fed)})," جنيه · تكلفة الفدان: ",h("b",{class:"num",text:fmt(t.tout/fed)})," جنيه");
+
+  // sections
+  $("plots-sec").hidden=onPlot;$("plot-admin").hidden=!plot;$("plot-field").hidden=onPlot;
+  $("add-h").textContent=plot?"تسجيل حركة على "+plot.name:"تسجيل حركة";
+  $("led-h").textContent=onPlot?"دفتر القطعة":"الدفتر";
+  if(!onPlot)renderPlots();
+  renderLedger(scope,onPlot);
+  renderCats(scope,t.tout);
+}
+
+function renderPlots(){
+  const box=$("plots");
+  if(!plotsLoaded){box.replaceChildren(h("div",{class:"empty small",text:"جارٍ تحميل القطع…"}));return}
+  const list=plots.filter(p=>seasonFilter==="all"||p.season===seasonFilter).sort(sortPlots);
+  if(!plots.length){box.replaceChildren(h("div",{class:"empty small",text:"لسه مفيش قطع. دوس \"+ قطعة جديدة\" واكتب اسمها ومساحتها والزرعة والموسم، وهيبقالها صفحة بحساباتها."}));return}
+  if(!list.length){box.replaceChildren(h("div",{class:"empty small",text:"مفيش قطع في الموسم ده."}));return}
+  box.replaceChildren(...list.map(p=>{
+    const t=totals(entries.filter(e=>e.plotId===p.id)), fed=(+p.areaQirat||0)/24;
+    return h("button",{type:"button",class:"plot-card",onclick:()=>{location.hash="plot-"+p.id}},
+      h("div",{class:"top"},h("span",{class:"name",text:p.name}),h("span",{class:"chip "+p.season,text:seasonText(p)})),
+      h("div",{class:"sub",text:(p.crop||"بدون زرعة")+" · "+areaText(p.areaQirat)}),
+      h("div",{class:"nets"},
+        h("span",null,"الصافي ",h("b",{class:"num "+(t.net<0?"neg":"pos"),text:signed(t.net)})),
+        fed>0&&(t.tin||t.tout)?h("span",null,"للفدان ",h("b",{class:"num",text:signed(t.net/fed)})):h("span",{text:t.tin||t.tout?"":"مفيش حركات"})));
+  }));
+}
+
+function renderLedger(scope,onPlot){
+  const box=$("ledger");
+  const list=scope.filter(e=>filter==="all"||e.type===filter).sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
+  if(!scope.length){box.replaceChildren(h("div",{class:"empty",text:onPlot?"لسه مفيش حركات على القطعة دي. سجّل أول مصروف ليها من الفورم اللي فوق.":"لسه مفيش حركات. سجّل أول مصروف أو وارد من الفورم اللي فوق، وهيظهر هنا عندك وعند شريكك."}));return}
+  if(!list.length){box.replaceChildren(h("div",{class:"empty",text:"مفيش حركات من النوع ده."}));return}
+  const groups=new Map();
+  for(const e of list){const k=e.date.slice(0,7);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(e)}
+  box.replaceChildren(...[...groups].map(([k,g])=>{
+    const [y,m]=k.split("-");const net=totals(g).net;
+    return h("div",{class:"month"},
+      h("div",{class:"mhead"},h("span",{text:MONTHS[+m-1]+" "+y}),
+        h("span",{class:"net amt "+(net>=0?"in":"out")},"صافي ",h("span",{class:"num",text:signed(net)}))),
+      h("ul",{class:"entries"},...g.map(e=>{
+        const p=!onPlot&&e.plotId?plotById(e.plotId):null;
+        const confirming=pendingDel===e.id;
+        return h("li",{class:"entry"},
+          h("div",{class:"day"},h("b",{class:"num",text:+e.date.slice(8)}),MONTHS[+m-1].slice(0,3)),
+          h("div",{class:"what"},
+            p?h("span",{class:"tag",text:p.name}):null,
+            h("span",{class:"cat",text:e.cat||""}),
+            e.note?h("span",{class:"note",style:"display:block",text:e.note}):null,
+            e.by?h("span",{class:"who",text:"سجّلها: "+shortName(e.by)}):null),
+          h("div",null,
+            h("div",{class:"amt "+e.type},h("span",{class:"num",text:(e.type==="in"?"+":"−")+fmt(e.amount)})),
+            h("button",{type:"button",class:"del"+(confirming?" confirm":""),text:confirming?"تأكيد الحذف؟":"حذف",onclick:()=>{
+              if(!confirming){pendingDel=e.id;render();return}
+              pendingDel=null;col.doc(e.id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
+            }})));
+      })));
+  }));
+}
+
+function renderCats(scope,tout){
+  const by={};for(const e of scope)if(e.type==="out")by[e.cat]=(by[e.cat]||0)+e.amount;
+  const cats=Object.entries(by).sort((a,b)=>b[1]-a[1]);
   $("cat-sec").hidden=!cats.length;
   const max=cats.length?cats[0][1]:1;
-  $("cats").innerHTML=cats.map(([c,v])=>`<div class="cat-row"><span class="cn"></span>
-    <div class="bar"><i style="width:${Math.max(3,v/max*100)}%"></i></div>
-    <span class="num">${fmt(v)} · ${Math.round(v/tout*100)}%</span></div>`).join("");
-  $("cats").querySelectorAll(".cn").forEach((s,i)=>s.textContent=cats[i][0]);
+  $("cats").replaceChildren(...cats.map(([c,v])=>h("div",{class:"cat-row"},
+    h("span",{text:c}),h("div",{class:"bar"},h("i",{style:"width:"+Math.max(3,v/max*100)+"%"})),
+    h("span",{class:"num",text:fmt(v)+" · "+Math.round(v/tout*100)+"%"}))));
 }
 
 /* ---------- Excel export / import ---------- */
 const tmsg=t=>{$("tools-msg").textContent=t};
 function saveOut(name,mime,text){
-  if(Bridge&&Bridge.saveFile){
-    const r=Bridge.saveFile(name,mime,text);
-    tmsg(String(r).startsWith("ERR:")?"ماقدرناش نحفظ الملف.":"اتحفظ في: "+r);return;
-  }
-  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();a.remove();tmsg("تم تنزيل "+name)}
+  if(Bridge&&Bridge.saveFile){const r=Bridge.saveFile(name,mime,text);tmsg(String(r).startsWith("ERR:")?"ماقدرناش نحفظ الملف.":"اتحفظ في: "+r);return}
+  try{const a=h("a",{href:URL.createObjectURL(new Blob([text],{type:mime})),download:name});document.body.append(a);a.click();a.remove();tmsg("تم تنزيل "+name)}
   catch(_){tmsg("التنزيل مش متاح هنا.")}
 }
 $("b-csv").onclick=()=>{
-  if(!entries.length){tmsg("مفيش حركات تتصدّر لسه.");return}
+  const pid=currentPlotId(), plot=pid?plotById(pid):null;
+  const scope=pid?entries.filter(e=>e.plotId===pid):entries;
+  if(!scope.length){tmsg("مفيش حركات تتصدّر لسه.");return}
   const esc=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-  const rows=[["التاريخ","النوع","البند","البيان","وارد","منصرف","الرصيد","سجّلها"]];
+  const rows=[["التاريخ","القطعة","الزرعة","الموسم","النوع","البند","البيان","وارد","منصرف","الرصيد","سجّلها"]];
   let bal=0;
-  [...entries].sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created).forEach(e=>{
-    bal+=e.type==="in"?e.amount:-e.amount;
-    rows.push([e.date,e.type==="in"?"وارد":"منصرف",e.cat,e.note,e.type==="in"?e.amount:"",e.type==="out"?e.amount:"",bal,shortName(e.by)]);
+  [...scope].sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created).forEach(e=>{
+    bal+=e.type==="in"?e.amount:-e.amount;const p=e.plotId?plotById(e.plotId):null;
+    rows.push([e.date,p?p.name:"عام",p?p.crop:"",p?seasonText(p):"",e.type==="in"?"وارد":"منصرف",e.cat,e.note,e.type==="in"?e.amount:"",e.type==="out"?e.amount:"",bal,shortName(e.by)]);
   });
-  saveOut("حسابات-الأرض-"+todayISO()+".csv","text/csv","﻿"+rows.map(r=>r.map(esc).join(",")).join("\r\n"));
+  const fname="حسابات-"+(plot?plot.name.replace(/[\\/:*?"<>|]/g,"-"):"الأرض")+"-"+todayISO()+".csv";
+  saveOut(fname,"text/csv","﻿"+rows.map(r=>r.map(esc).join(",")).join("\r\n"));
 };
 $("b-restore").onclick=()=>{$("restore-file").value="";$("restore-file").click()};
 $("restore-file").onchange=()=>{
@@ -366,10 +591,11 @@ $("restore-file").onchange=()=>{
   rd.onload=()=>{
     try{
       const data=JSON.parse(rd.result);
-      const list=(Array.isArray(data)?data:data.entries||[]).filter(valid);
+      const list=(Array.isArray(data)?data:data.entries||[]).filter(validEntry);
       if(!list.length){tmsg("الملف ده مفيهوش حركات صالحة.");return}
       pendingRestore=list;
-      $("restore-text").textContent="الملف فيه "+list.length+" حركة، وهتتضاف للدفتر المشترك.";
+      const pl=currentPlotId()&&plotById(currentPlotId());
+      $("restore-text").textContent="الملف فيه "+list.length+" حركة، وهتتضاف "+(pl?"على قطعة "+pl.name:"للدفتر العام")+".";
       $("restore-confirm").hidden=false;tmsg("");
     }catch(_){tmsg("الملف ده مش نسخة احتياطية من التطبيق.")}
   };
@@ -378,11 +604,11 @@ $("restore-file").onchange=()=>{
 $("r-yes").onclick=async()=>{
   const list=pendingRestore||[];pendingRestore=null;$("restore-confirm").hidden=true;
   if(!col||!me)return;
+  const pid=currentPlotId()&&plotById(currentPlotId())?currentPlotId():"";
   try{
-    const fs=firebase.firestore();
     for(let i=0;i<list.length;i+=400){
       const batch=fs.batch();
-      list.slice(i,i+400).forEach(e=>batch.set(col.doc(),{type:e.type,amount:e.amount,cat:String(e.cat||""),date:e.date,note:String(e.note||""),created:+e.created||Date.now(),by:me.email||""}));
+      list.slice(i,i+400).forEach(e=>batch.set(col.doc(),{type:e.type,amount:e.amount,cat:String(e.cat||""),date:e.date,note:String(e.note||""),plotId:pid,created:+e.created||Date.now(),by:me.email||""}));
       await batch.commit();
     }
     tmsg("اتضافت "+list.length+" حركة.");

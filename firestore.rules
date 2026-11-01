@@ -1,10 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only these two accounts can read or write the shared ledger
     function allowed() {
       return request.auth != null
-        && request.auth.token.email in ['amrriad565@gmail.com'];
+        && request.auth.token.email in ['amrriad565@gmail.com', 'EMAIL_2'];
     }
     match /entries/{id} {
       allow read, delete: if allowed();
@@ -12,6 +11,12 @@ service cloud.firestore {
         && request.resource.data.amount is number
         && request.resource.data.amount > 0
         && request.resource.data.type in ['in', 'out'];
+    }
+    match /plots/{id} {
+      allow read, delete: if allowed();
+      allow create, update: if allowed()
+        && request.resource.data.name is string
+        && request.resource.data.season in ['summer', 'winter'];
     }
   }
 }
