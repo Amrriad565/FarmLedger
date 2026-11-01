@@ -1,7 +1,10 @@
 name: Build APK
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,7 +18,15 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk FarmLedger.apk
       - uses: actions/upload-artifact@v4
         with:
           name: FarmLedger-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: FarmLedger.apk
+      - name: Publish as release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: حسابات الأرض - إصدار ${{ github.run_number }}
+          files: FarmLedger.apk
+          make_latest: true
