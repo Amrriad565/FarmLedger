@@ -11,6 +11,7 @@ import android.provider.MediaStore;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -23,6 +24,8 @@ import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends Activity {
 
+    private static final String APP_URL = "https://amrriad565.github.io/FarmLedger/";
+    private static final String APP_HOST = "amrriad565.github.io";
     private static final int PICK_FILE = 42;
     private WebView web;
     private ValueCallback<Uri[]> fileCallback;
@@ -44,9 +47,15 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 Uri u = req.getUrl();
-                if ("file".equals(u.getScheme())) return false;
+                if ("file".equals(u.getScheme()) || APP_HOST.equals(u.getHost())) return false;
                 try { startActivity(new Intent(Intent.ACTION_VIEW, u)); } catch (Exception ignored) { }
                 return true;
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
+                // First launch with no internet and nothing cached yet
+                if (req.isForMainFrame()) view.loadUrl("file:///android_asset/offline.html");
             }
         });
 
@@ -70,7 +79,7 @@ public class MainActivity extends Activity {
 
         setContentView(web);
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl("file:///android_asset/index.html");
+        else web.loadUrl(APP_URL);
     }
 
     @Override

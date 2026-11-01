@@ -2,8 +2,15 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>حسابات الأرض</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2f4a22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="حسابات الأرض">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@500;700&family=Tajawal:wght@400;500;700;800&display=swap">
 <style>
 /* Layout: one narrow column like a farmer's ledger book — balance band on top, entry sheet, then the ledger by month */
@@ -31,7 +38,7 @@ body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px
 .num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;display:inline-block}
 
 header.band{background:var(--band);color:var(--band-fg)}
-header.band .wrap{padding-block:20px 22px;display:grid;gap:14px}
+header.band .wrap{padding-block:calc(14px + env(safe-area-inset-top,0px)) 22px;display:grid;gap:14px}
 .brand{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 h1{font-family:var(--display);font-weight:700;font-size:1.45rem;margin:0;text-wrap:balance}
 .season{font-size:.85rem;color:var(--band-muted)}
@@ -43,7 +50,7 @@ h1{font-family:var(--display);font-weight:700;font-size:1.45rem;margin:0;text-wr
 .split span{display:block;font-size:.8rem;color:var(--band-muted)}
 .split b{font-size:1.15rem}
 
-main .wrap{padding-block:18px 40px;display:grid;gap:22px}
+main .wrap{padding-block:18px calc(40px + env(safe-area-inset-bottom,0px));display:grid;gap:22px}
 section h2{font-family:var(--display);font-size:1.1rem;font-weight:500;margin:0 0 10px}
 
 .sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px}
@@ -73,6 +80,7 @@ ul.entries{list-style:none;margin:0;padding:0}
 .day b{display:block;font-size:1.15rem;color:var(--fg)}
 .what{min-width:0}
 .what .cat{font-weight:700;display:block}
+.what .who{display:block}
 .what .note{font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
 .amt{font-weight:800;text-align:left}
 .amt.in{color:var(--in)} .amt.out{color:var(--out)}
@@ -97,11 +105,36 @@ ul.entries{list-style:none;margin:0;padding:0}
 .confirm-box .acts{display:flex;gap:8px}
 .confirm-box button{font:inherit;font-weight:700;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
 .confirm-box button.go{background:var(--out);color:#fff;border-color:var(--out)}
+
+.who{font-size:.75rem;color:var(--muted)}
+.userbar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.8rem;color:var(--band-muted)}
+.userbar button{font:inherit;font-size:.8rem;background:none;border:1px solid color-mix(in srgb,var(--band-fg) 30%,transparent);color:var(--band-fg);border-radius:999px;padding:3px 12px;cursor:pointer}
+.sync{display:inline-flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--band-muted)}
+.sync.ok i{background:#8dbb5f}.sync.off i{background:#e0a34a}
+.login{max-width:420px;margin:0 auto;padding-block:48px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:18px}
+.login h1{color:var(--accent);font-size:1.8rem}
+.login p{margin:0;color:var(--muted)}
+#login-email{direction:ltr;text-align:left}
+#login-pass{direction:ltr;text-align:left}
 </style>
 </head>
 <body>
+<div id="login" class="login" hidden>
+  <h1>دفتر حسابات الأرض</h1>
+  <p>ادخل بالإيميل والباسورد اللي اتعملولك. الحسابات مشتركة بينك وبين شريكك.</p>
+  <form class="sheet" id="login-form" novalidate>
+    <label>الإيميل<input type="email" id="login-email" autocomplete="username" inputmode="email"></label>
+    <label>الباسورد<input type="password" id="login-pass" autocomplete="current-password"></label>
+    <button class="primary" type="submit" id="login-btn">دخول</button>
+    <p class="msg" id="login-msg" aria-live="polite"></p>
+  </form>
+</div>
+<div id="boot" class="login"><p>جارٍ التحميل…</p></div>
+<div id="app" hidden>
 <header class="band">
   <div class="wrap">
+    <div class="userbar"><span class="sync" id="sync"><i></i><span id="sync-t">جارٍ الاتصال…</span></span><button type="button" id="logout">خروج</button></div>
     <div class="brand"><h1>دفتر حسابات الأرض</h1><span class="season" id="today"></span></div>
     <div>
       <div class="bal-label">الرصيد (الوارد − المنصرف)</div>
@@ -152,27 +185,29 @@ ul.entries{list-style:none;margin:0;padding:0}
   </section>
 
   <section aria-labelledby="tools-h">
-    <h2 id="tools-h">حفظ ونقل البيانات</h2>
+    <h2 id="tools-h">تصدير واستيراد</h2>
     <div class="tools">
       <button type="button" id="b-csv" class="wide">تصدير ملف Excel</button>
-      <button type="button" id="b-backup">نسخة احتياطية</button>
-      <button type="button" id="b-restore">استرجاع نسخة</button>
-      <button type="button" id="b-share" class="wide">مشاركة النسخة (واتساب / إيميل / Drive)</button>
+      <button type="button" id="b-restore" class="wide">استيراد نسخة احتياطية من التطبيق القديم</button>
     </div>
     <input type="file" id="restore-file" accept=".json,application/json,text/plain,*/*" hidden>
     <div id="restore-confirm" class="confirm-box" hidden>
       <span id="restore-text"></span>
-      <div class="acts"><button type="button" class="go" id="r-yes">استبدال</button><button type="button" id="r-no">إلغاء</button></div>
+      <div class="acts"><button type="button" class="go" id="r-yes">إضافة</button><button type="button" id="r-no">إلغاء</button></div>
     </div>
     <p class="tools-msg" id="tools-msg" aria-live="polite"></p>
   </section>
 
-  <p class="note-bar" id="status">البيانات محفوظة على الموبايل ده بس. اعمل نسخة احتياطية كل فترة.</p>
+  <p class="note-bar" id="status"></p>
 </div>
 </main>
 
+</div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
 <script>
-const KEY="farm-ledger-v1";
 const CATS={
   in:["بيع محصول","بيع تبن / مخلفات","إيجار أرض (محصل)","دعم / تعويض","وارد آخر"],
   out:["تقاوي / شتلات","أسمدة","مبيدات","ري / سولار / كهرباء","عمالة / يوميات","حرث وخدمة آلات","حصاد ودراس","نقل","إيجار أرض (مدفوع)","صيانة","منصرف آخر"]
@@ -181,12 +216,13 @@ const MONTHS=["يناير","فبراير","مارس","أبريل","مايو","ي
 const $=id=>document.getElementById(id);
 const fmt=n=>Math.round(n).toLocaleString("en-US");
 const Bridge=window.AndroidBridge||null;
-let type="out", filter="all", entries=[], pendingDel=null, pendingRestore=null;
+let type="out", filter="all", entries=[], pendingDel=null, pendingRestore=null, col=null, me=null, unsub=null;
 
-function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(v)?v.filter(valid):[]}catch(_){return[]}}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(entries));return true}catch(_){$("status").textContent="ماقدرناش نحفظ على الموبايل. المساحة ممكن تكون مليانة.";return false}}
+if("serviceWorker" in navigator && location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+
+function show(which){$("boot").hidden=which!=="boot";$("login").hidden=which!=="login";$("app").hidden=which!=="app"}
 function valid(e){return e&&typeof e.amount==="number"&&e.amount>0&&/^\d{4}-\d{2}-\d{2}$/.test(e.date)&&(e.type==="in"||e.type==="out")}
-const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const shortName=email=>(email||"").split("@")[0];
 
 function todayISO(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 $("date").value=todayISO();
@@ -195,20 +231,67 @@ $("date").value=todayISO();
 function fillCats(){$("cat").innerHTML=CATS[type].map(c=>`<option>${c}</option>`).join("")}
 function setType(t){type=t;$("t-in").setAttribute("aria-pressed",t==="in");$("t-out").setAttribute("aria-pressed",t==="out");fillCats()}
 $("t-in").onclick=()=>setType("in");$("t-out").onclick=()=>setType("out");fillCats();
-
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{
   filter=b.dataset.f;document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
-
 const normDigits=s=>s.replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(/[٫,،]/g,".");
+
+function setSync(state,text){const s=$("sync");s.className="sync "+state;$("sync-t").textContent=text}
+function friendlyErr(e){
+  const c=(e&&e.code)||"";
+  if(c.includes("permission-denied"))return "الحساب ده مالوش صلاحية على الدفتر. اتأكد إن الإيميل متضاف في قواعد الأمان.";
+  if(c.includes("wrong-password")||c.includes("invalid-credential")||c.includes("user-not-found")||c.includes("invalid-login"))return "الإيميل أو الباسورد غلط.";
+  if(c.includes("invalid-email"))return "الإيميل مكتوب غلط.";
+  if(c.includes("too-many-requests"))return "محاولات كتير. استنى شوية وجرّب تاني.";
+  if(c.includes("network"))return "مفيش نت. اتأكد من الاتصال وجرّب تاني.";
+  return "حصلت مشكلة: "+(e&&e.message||c);
+}
+
+/* ---------- Firebase ---------- */
+if(!window.FIREBASE_CONFIG||!window.firebase){
+  $("boot").innerHTML='<p>التطبيق لسه مش متوصّل بقاعدة البيانات، أو مفيش نت في أول تشغيل.</p>';
+}else{
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  const auth=firebase.auth(), fs=firebase.firestore();
+  fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  col=fs.collection("entries");
+
+  $("login-form").addEventListener("submit",async e=>{
+    e.preventDefault();$("login-msg").textContent="";
+    const em=$("login-email").value.trim(), pw=$("login-pass").value;
+    if(!em||!pw){$("login-msg").textContent="اكتب الإيميل والباسورد.";return}
+    $("login-btn").disabled=true;
+    try{await auth.signInWithEmailAndPassword(em,pw)}catch(err){$("login-msg").textContent=friendlyErr(err)}
+    finally{$("login-btn").disabled=false}
+  });
+  $("logout").onclick=()=>{auth.signOut()};
+
+  auth.onAuthStateChanged(u=>{
+    if(unsub){unsub();unsub=null}
+    me=u;
+    if(!u){entries=[];show("login");return}
+    show("app");setSync("","جارٍ التحميل…");
+    $("ledger").innerHTML='<div class="empty">جارٍ تحميل الحسابات…</div>';
+    unsub=col.onSnapshot({includeMetadataChanges:true},snap=>{
+      entries=snap.docs.map(d=>({id:d.id,...d.data()})).filter(valid);
+      const pending=snap.metadata.hasPendingWrites, cached=snap.metadata.fromCache;
+      if(pending)setSync("off","في تعديلات لسه ماتبعتتش");
+      else if(cached)setSync("off","أوفلاين — هيتزامن لما النت يرجع");
+      else setSync("ok","متزامن");
+      render();
+    },err=>{setSync("off","مش متصل");$("ledger").innerHTML='<div class="empty"></div>';$("ledger").firstChild.textContent=friendlyErr(err)});
+  });
+}
 
 $("form").addEventListener("submit",e=>{
   e.preventDefault();
+  if(!col||!me)return;
   const amt=parseFloat(normDigits($("amount").value.trim()));
   if(!(amt>0)){$("msg").textContent="اكتب المبلغ بالأرقام، أكبر من صفر.";$("amount").focus();return}
   if(!$("date").value){$("msg").textContent="اختار التاريخ.";return}
-  entries.push({id:newId(),type,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),created:Date.now()});
-  if(!persist()){entries.pop();return}
-  $("amount").value="";$("note").value="";$("msg").textContent="";render();
+  // fire-and-forget: Firestore saves locally at once and syncs when online
+  col.add({type,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),created:Date.now(),by:me.email||""})
+    .catch(err=>{$("msg").textContent=friendlyErr(err)});
+  $("amount").value="";$("note").value="";$("msg").textContent="";
 });
 
 function render(){
@@ -219,7 +302,7 @@ function render(){
 
   const list=entries.filter(e=>filter==="all"||e.type===filter)
     .sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
-  if(!entries.length){$("ledger").innerHTML='<div class="empty">لسه مفيش حركات. سجّل أول مصروف أو وارد من الفورم اللي فوق، وهيظهر هنا مترتّب بالشهر.</div>'}
+  if(!entries.length){$("ledger").innerHTML='<div class="empty">لسه مفيش حركات. سجّل أول مصروف أو وارد من الفورم اللي فوق، وهيظهر هنا عندك وعند شريكك.</div>'}
   else if(!list.length){$("ledger").innerHTML='<div class="empty">مفيش حركات من النوع ده.</div>'}
   else{
     const groups={};
@@ -231,20 +314,21 @@ function render(){
         <span class="net ${net>=0?"amt in":"amt out"}">صافي <span class="num">${net<0?"−":""}${fmt(Math.abs(net))}</span></span></div>
         <ul class="entries">${g.map(e=>`<li class="entry">
           <div class="day"><b class="num">${+e.date.slice(8)}</b>${MONTHS[+m-1].slice(0,3)}</div>
-          <div class="what"><span class="cat"></span><span class="note"></span></div>
+          <div class="what"><span class="cat"></span><span class="note"></span><span class="who"></span></div>
           <div><div class="amt ${e.type}"><span class="num">${e.type==="in"?"+":"−"}${fmt(e.amount)}</span></div>
           <button type="button" class="del${pendingDel===e.id?" confirm":""}" data-id="${e.id}">${pendingDel===e.id?"تأكيد الحذف؟":"حذف"}</button></div>
         </li>`).join("")}</ul></div>`}).join("");
     const items=$("ledger").querySelectorAll(".entry");let i=0;
-    for(const k of Object.keys(groups))for(const e of groups[k]){const li=items[i++];li.querySelector(".cat").textContent=e.cat||"";li.querySelector(".note").textContent=e.note||""}
+    for(const k of Object.keys(groups))for(const e of groups[k]){const li=items[i++];
+      li.querySelector(".cat").textContent=e.cat||"";li.querySelector(".note").textContent=e.note||"";
+      li.querySelector(".who").textContent=e.by?("سجّلها: "+shortName(e.by)):"";
+      if(e.note)li.querySelector(".note").style.display="block";}
     $("ledger").querySelectorAll(".del").forEach(b=>b.onclick=()=>{
       const id=b.dataset.id;
       if(pendingDel!==id){pendingDel=id;render();return}
-      pendingDel=null;const keep=entries;entries=entries.filter(x=>x.id!==id);
-      if(!persist())entries=keep;render();
+      pendingDel=null;col.doc(id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
     });
   }
-
   const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
   $("cat-sec").hidden=!cats.length;
   const max=cats.length?cats[0][1]:1;
@@ -254,40 +338,26 @@ function render(){
   $("cats").querySelectorAll(".cn").forEach((s,i)=>s.textContent=cats[i][0]);
 }
 
-/* ---------- backup / restore / Excel ---------- */
+/* ---------- Excel export / import ---------- */
 const tmsg=t=>{$("tools-msg").textContent=t};
-const stamp=()=>todayISO();
 function saveOut(name,mime,text){
   if(Bridge&&Bridge.saveFile){
     const r=Bridge.saveFile(name,mime,text);
-    if(String(r).startsWith("ERR:"))tmsg("ماقدرناش نحفظ الملف. جرّب زرار المشاركة بدل كده.");
-    else tmsg("اتحفظ في: "+r);
-    return;
+    tmsg(String(r).startsWith("ERR:")?"ماقدرناش نحفظ الملف.":"اتحفظ في: "+r);return;
   }
-  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;a.click();tmsg("تم تنزيل "+name)}
+  try{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();a.remove();tmsg("تم تنزيل "+name)}
   catch(_){tmsg("التنزيل مش متاح هنا.")}
 }
-function backupJSON(){return JSON.stringify({app:"farm-ledger",version:1,exported:new Date().toISOString(),entries},null,1)}
-
-$("b-backup").onclick=()=>{
-  if(!entries.length){tmsg("مفيش حركات تتحفظ لسه.");return}
-  saveOut("farm-ledger-backup-"+stamp()+".json","application/json",backupJSON());
-};
-$("b-share").onclick=()=>{
-  if(!entries.length){tmsg("مفيش حركات تتشارك لسه.");return}
-  if(Bridge&&Bridge.shareText){Bridge.shareText("نسخة احتياطية - حسابات الأرض "+stamp(),backupJSON());tmsg("ابعت النسخة لنفسك على واتساب أو الإيميل. لاسترجاعها احفظ النص في ملف ‎.json‎.");}
-  else tmsg("المشاركة متاحة من جوه التطبيق على الموبايل.");
-};
 $("b-csv").onclick=()=>{
   if(!entries.length){tmsg("مفيش حركات تتصدّر لسه.");return}
   const esc=v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
-  const rows=[["التاريخ","النوع","البند","البيان","وارد","منصرف","الرصيد"]];
+  const rows=[["التاريخ","النوع","البند","البيان","وارد","منصرف","الرصيد","سجّلها"]];
   let bal=0;
   [...entries].sort((a,b)=>a.date.localeCompare(b.date)||a.created-b.created).forEach(e=>{
     bal+=e.type==="in"?e.amount:-e.amount;
-    rows.push([e.date,e.type==="in"?"وارد":"منصرف",e.cat,e.note,e.type==="in"?e.amount:"",e.type==="out"?e.amount:"",bal]);
+    rows.push([e.date,e.type==="in"?"وارد":"منصرف",e.cat,e.note,e.type==="in"?e.amount:"",e.type==="out"?e.amount:"",bal,shortName(e.by)]);
   });
-  saveOut("حسابات-الأرض-"+stamp()+".csv","text/csv","﻿"+rows.map(r=>r.map(esc).join(",")).join("\r\n"));
+  saveOut("حسابات-الأرض-"+todayISO()+".csv","text/csv","﻿"+rows.map(r=>r.map(esc).join(",")).join("\r\n"));
 };
 $("b-restore").onclick=()=>{$("restore-file").value="";$("restore-file").click()};
 $("restore-file").onchange=()=>{
@@ -296,20 +366,29 @@ $("restore-file").onchange=()=>{
   rd.onload=()=>{
     try{
       const data=JSON.parse(rd.result);
-      const list=(Array.isArray(data)?data:data.entries||[]).filter(valid).map(e=>({id:e.id||newId(),type:e.type,amount:e.amount,cat:String(e.cat||""),date:e.date,note:String(e.note||""),created:+e.created||0}));
+      const list=(Array.isArray(data)?data:data.entries||[]).filter(valid);
       if(!list.length){tmsg("الملف ده مفيهوش حركات صالحة.");return}
       pendingRestore=list;
-      $("restore-text").textContent="الملف فيه "+list.length+" حركة. هيستبدل الـ "+entries.length+" حركة الموجودة دلوقتي.";
+      $("restore-text").textContent="الملف فيه "+list.length+" حركة، وهتتضاف للدفتر المشترك.";
       $("restore-confirm").hidden=false;tmsg("");
     }catch(_){tmsg("الملف ده مش نسخة احتياطية من التطبيق.")}
   };
-  rd.onerror=()=>tmsg("ماقدرناش نقرا الملف.");
   rd.readAsText(f);
 };
-$("r-yes").onclick=()=>{const keep=entries;entries=pendingRestore||[];if(!persist())entries=keep;pendingRestore=null;$("restore-confirm").hidden=true;render();tmsg("تم استرجاع "+entries.length+" حركة.")};
+$("r-yes").onclick=async()=>{
+  const list=pendingRestore||[];pendingRestore=null;$("restore-confirm").hidden=true;
+  if(!col||!me)return;
+  try{
+    const fs=firebase.firestore();
+    for(let i=0;i<list.length;i+=400){
+      const batch=fs.batch();
+      list.slice(i,i+400).forEach(e=>batch.set(col.doc(),{type:e.type,amount:e.amount,cat:String(e.cat||""),date:e.date,note:String(e.note||""),created:+e.created||Date.now(),by:me.email||""}));
+      await batch.commit();
+    }
+    tmsg("اتضافت "+list.length+" حركة.");
+  }catch(err){tmsg(friendlyErr(err))}
+};
 $("r-no").onclick=()=>{pendingRestore=null;$("restore-confirm").hidden=true};
-
-entries=load();render();
 </script>
 </body>
 </html>
