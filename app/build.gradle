@@ -10,16 +10,27 @@ android {
         applicationId 'com.amr.farmledger'
         minSdk 24
         targetSdk 34
-        versionCode 3
-        versionName '3.0'
+        versionCode 4
+        versionName '4.0'
+    }
+
+    // One fixed key for every build, so a new APK installs over the old one.
+    signingConfigs {
+        farm {
+            storeFile rootProject.file('keystore/farmledger.jks')
+            storePassword 'DKW5bHeY-QIC76H0QfxU7RvZ'
+            keyAlias 'farmledger'
+            keyPassword 'DKW5bHeY-QIC76H0QfxU7RvZ'
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
-            // Signed with the debug key so the APK installs directly on your phone.
-            // For Google Play, replace this with your own release keystore.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.farm
+        }
+        debug {
+            signingConfig signingConfigs.farm
         }
     }
 

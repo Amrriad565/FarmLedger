@@ -150,6 +150,23 @@ ul.entries{list-style:none;margin:0;padding:0}
 .plot-actions{display:flex;gap:8px;flex-wrap:wrap}
 .empty.small{padding:16px}
 
+.rent{display:grid;gap:10px}
+.rent-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rent-grid div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:2px;min-width:0}
+.rent-grid span{font-size:.78rem;color:var(--muted)}
+.rent-grid b{font-size:1.05rem}
+.meter{height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:5px}
+.rent-line{font-size:.85rem;color:var(--muted)}
+.rent-line b{color:var(--out)}
+.rent-line b.done{color:var(--in)}
+.nav-row{display:flex;gap:8px;flex-wrap:wrap}
+.nav-btn{font:inherit;font-weight:700;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%}
+.nav-btn .num{color:var(--out)}
+.pocket-tag{font-size:.75rem;color:var(--summer);font-weight:700;display:block}
+.settle{font:inherit;font-size:.78rem;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:2px 10px;cursor:pointer;display:block;margin:4px 0 0 auto;white-space:nowrap}
+.settle.done{border-color:var(--in);color:var(--in);background:var(--in-soft)}
+.entry.settled .amt{opacity:.55}
 </style>
 </head>
 <body>
@@ -170,7 +187,7 @@ ul.entries{list-style:none;margin:0;padding:0}
 <header class="band">
   <div class="wrap">
     <div class="userbar"><span class="sync" id="sync"><i></i><span id="sync-t">جارٍ الاتصال…</span></span><button type="button" id="logout">خروج</button></div>
-    <button type="button" class="back" id="back" hidden>→ كل القطع</button>
+    <button type="button" class="back" id="back" hidden>→ الرئيسية</button>
     <div class="brand"><h1 id="title">دفتر حسابات الأرض</h1><span class="season" id="today"></span></div>
     <div class="plot-meta" id="plot-meta" hidden></div>
     <div>
@@ -205,12 +222,37 @@ ul.entries{list-style:none;margin:0;padding:0}
         <label>المساحة (فدان)<input id="p-fed" inputmode="numeric" autocomplete="off" placeholder="0"></label>
         <label>و (قيراط)<input id="p-qir" inputmode="numeric" autocomplete="off" placeholder="0"></label>
       </div>
+      <div class="toggle" role="group" aria-label="الملكية">
+        <button type="button" class="in" id="p-own" aria-pressed="true">ملك</button>
+        <button type="button" class="out" id="p-rented" aria-pressed="false">إيجار</button>
+      </div>
+      <div id="rent-fields" class="row" hidden>
+        <label>اسم المؤجر<input id="p-landlord" autocomplete="off" placeholder="مثال: الحاج محمود"></label>
+        <label>قيمة الإيجار (جنيه)<input id="p-rent" inputmode="decimal" autocomplete="off" placeholder="0"></label>
+      </div>
       <div class="form-acts">
         <button class="primary" type="submit" id="p-save">حفظ القطعة</button>
         <button class="plain" type="button" id="p-cancel">إلغاء</button>
       </div>
       <p class="msg" id="p-msg" aria-live="polite"></p>
     </form>
+  </section>
+
+  <section id="rent-sec" hidden aria-labelledby="rent-h">
+    <div class="sec-head"><h2 id="rent-h">الإيجار</h2><button type="button" class="ghost" id="pay-rent">+ دفع قسط</button></div>
+    <div class="rent">
+      <div class="rent-line" id="rent-who"></div>
+      <div class="rent-grid">
+        <div><span>قيمة الإيجار</span><b class="num" id="r-total">0</b></div>
+        <div><span>اتدفع</span><b class="num" id="r-paid">0</b></div>
+        <div><span>متبقي</span><b class="num" id="r-left">0</b></div>
+      </div>
+      <div class="meter"><i id="r-meter" style="width:0%"></i></div>
+    </div>
+  </section>
+
+  <section id="nav-sec" aria-label="صفحات">
+    <button type="button" class="nav-btn" id="go-pocket"><span>المصاريف المدفوعة من جيبي</span><span>ليّا <b class="num" id="nav-pocket">0</b> ←</span></button>
   </section>
 
   <section id="plots-sec" aria-labelledby="plots-h">
@@ -221,6 +263,11 @@ ul.entries{list-style:none;margin:0;padding:0}
       <button type="button" data-s="summer" aria-pressed="false">صيفي</button>
     </div>
     <div class="plots" id="plots"></div>
+    <p class="rent-line" id="rent-total-line" hidden></p>
+  </section>
+
+  <section id="pocket-people" hidden aria-label="مين اللي دفع">
+    <div class="tabs" role="group" id="people-tabs"></div>
   </section>
 
   <section aria-labelledby="add-h">
@@ -234,6 +281,7 @@ ul.entries{list-style:none;margin:0;padding:0}
         <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0">
       </label>
       <label id="plot-field">القطعة<select id="e-plot"></select></label>
+      <label id="src-field">اتدفع منين؟<select id="e-src"><option value="">من فلوس الأرض</option><option value="me">من جيبي الخاص</option></select></label>
       <div class="row">
         <label>البند<select id="cat"></select></label>
         <label>التاريخ<input type="date" id="date"></label>
@@ -312,7 +360,8 @@ const shortName=email=>(email||"").split("@")[0];
 
 let type="out", filter="all", seasonFilter="all";
 let entries=[], plots=[], plotsLoaded=false;
-let pendingDel=null, pendingRestore=null, editingPlot=null, pSeason="winter";
+let pendingDel=null, pendingRestore=null, editingPlot=null, pSeason="winter", pOwner="own", pocketPerson=null;
+const RENT_CAT="إيجار أرض (مدفوع)";
 let col=null, plotsCol=null, fs=null, me=null, unsubs=[];
 
 function h(tag,props,...kids){
@@ -346,12 +395,14 @@ function sortPlots(a,b){return (+b.year||0)-(+a.year||0)||(a.season===b.season?0
 
 /* ---------- routing ---------- */
 function currentPlotId(){const m=location.hash.match(/^#plot-([A-Za-z0-9_-]+)$/);return m?m[1]:null}
+const onPocket=()=>location.hash==="#pocket";
+$("go-pocket").onclick=()=>{location.hash="pocket"};
 window.addEventListener("hashchange",()=>{pendingDel=null;closePlotForm();$("del-confirm").hidden=true;render();window.scrollTo(0,0)});
-$("back").onclick=()=>{if(history.length>1&&currentPlotId())history.back();else location.hash=""};
+$("back").onclick=()=>{if(history.length>1&&location.hash)history.back();else location.hash=""};
 
 /* ---------- entry form ---------- */
 function fillCats(){$("cat").replaceChildren(...CATS[type].map(c=>h("option",{text:c})))}
-function setType(t){type=t;$("t-in").setAttribute("aria-pressed",t==="in");$("t-out").setAttribute("aria-pressed",t==="out");fillCats()}
+function setType(t){type=t;$("t-in").setAttribute("aria-pressed",t==="in");$("t-out").setAttribute("aria-pressed",t==="out");fillCats();$("src-field").hidden=t==="in"||onPocket()}
 $("t-in").onclick=()=>setType("in");$("t-out").onclick=()=>setType("out");fillCats();
 document.querySelectorAll("#type-tabs button").forEach(b=>b.onclick=()=>{
   filter=b.dataset.f;document.querySelectorAll("#type-tabs button").forEach(x=>x.setAttribute("aria-pressed",x===b));render()});
@@ -371,7 +422,9 @@ $("form").addEventListener("submit",e=>{
   if(!(amt>0)){$("msg").textContent="اكتب المبلغ بالأرقام، أكبر من صفر.";$("amount").focus();return}
   if(!$("date").value){$("msg").textContent="اختار التاريخ.";return}
   const pid=currentPlotId()&&plotById(currentPlotId())?currentPlotId():$("e-plot").value;
-  col.add({type,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),plotId:pid||"",created:Date.now(),by:me.email||""})
+  const t=onPocket()?"out":type;
+  const pocket=t==="out"&&(onPocket()||$("e-src").value==="me")?(me.email||""):"";
+  col.add({type:t,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),plotId:pid||"",pocket,settled:false,created:Date.now(),by:me.email||""})
     .catch(err=>{$("msg").textContent=friendlyErr(err)});
   $("amount").value="";$("note").value="";$("msg").textContent="";
 });
@@ -380,6 +433,8 @@ $("form").addEventListener("submit",e=>{
 function setPSeason(s,keepYear){pSeason=s;$("p-win").setAttribute("aria-pressed",s==="winter");$("p-sum").setAttribute("aria-pressed",s==="summer");
   $("crops").replaceChildren(...CROPS[s].map(c=>h("option",{value:c})));
   if(!keepYear)$("p-year").value=defaultYear(s);}
+function setPOwner(o){pOwner=o;$("p-own").setAttribute("aria-pressed",o==="own");$("p-rented").setAttribute("aria-pressed",o==="rent");$("rent-fields").hidden=o!=="rent"}
+$("p-own").onclick=()=>setPOwner("own");$("p-rented").onclick=()=>setPOwner("rent");
 $("p-win").onclick=()=>setPSeason("winter");$("p-sum").onclick=()=>setPSeason("summer");
 function openPlotForm(p){
   editingPlot=p||null;
@@ -387,6 +442,8 @@ function openPlotForm(p){
   $("p-name").value=p?p.name:"";$("p-crop").value=p?p.crop||"":"";
   setPSeason(p?p.season:"winter",!!p);if(p)$("p-year").value=p.year;
   const q=p?+p.areaQirat||0:0;$("p-fed").value=p?Math.floor(q/24):"";$("p-qir").value=p?Math.round(q-Math.floor(q/24)*24)||"":"";
+  setPOwner(p&&p.owner==="rent"?"rent":"own");
+  $("p-landlord").value=p?p.landlord||"":"";$("p-rent").value=p&&p.rentTotal?p.rentTotal:"";
   $("p-msg").textContent="";$("plot-form-sec").hidden=false;
   $("plot-form-sec").scrollIntoView({behavior:"smooth",block:"start"});$("p-name").focus({preventScroll:true});
 }
@@ -404,7 +461,10 @@ $("plot-form").addEventListener("submit",e=>{
   if(!(area>0)){$("p-msg").textContent="اكتب المساحة بالفدان أو القيراط.";$("p-fed").focus();return}
   if(qir>=24){$("p-msg").textContent="القيراط لازم يكون أقل من 24 (الفدان = 24 قيراط).";return}
   if(!(year>2000&&year<2100)){$("p-msg").textContent="اكتب سنة الموسم، مثلاً "+defaultYear(pSeason)+".";return}
-  const data={name,crop,season:pSeason,year,areaQirat:area};
+  const rentTotal=pOwner==="rent"?parseFloat(normDigits($("p-rent").value||"0"))||0:0;
+  const landlord=pOwner==="rent"?$("p-landlord").value.trim():"";
+  if(pOwner==="rent"&&!(rentTotal>0)){$("p-msg").textContent="اكتب قيمة الإيجار بالجنيه.";$("p-rent").focus();return}
+  const data={name,crop,season:pSeason,year,areaQirat:area,owner:pOwner,landlord,rentTotal};
   if(editingPlot){
     plotsCol.doc(editingPlot.id).set(data,{merge:true}).catch(err=>{$("status").textContent=friendlyErr(err)});
     closePlotForm();render();
@@ -422,6 +482,13 @@ $("del-plot").onclick=()=>{
   $("del-confirm").hidden=false;
 };
 $("d-no").onclick=()=>{$("del-confirm").hidden=true};
+$("pay-rent").onclick=()=>{
+  const p=plotById(currentPlotId());if(!p)return;
+  setType("out");$("cat").value=RENT_CAT;$("note").value=p.landlord?"إيجار - "+p.landlord:"قسط إيجار";
+  const left=Math.max(0,(+p.rentTotal||0)-rentPaid(p.id));$("amount").value=left?String(Math.round(left)):"";
+  $("form").scrollIntoView({behavior:"smooth",block:"start"});$("amount").focus({preventScroll:true});
+};
+function rentPaid(pid){let s=0;for(const e of entries)if(e.plotId===pid&&e.type==="out"&&e.cat===RENT_CAT)s+=e.amount;return s}
 $("d-yes").onclick=()=>{const id=currentPlotId();$("del-confirm").hidden=true;
   plotsCol.doc(id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});location.hash=""};
 
@@ -478,9 +545,15 @@ if(!window.FIREBASE_CONFIG||!window.firebase){
 function render(){
   const pid=currentPlotId(), plot=pid?plotById(pid):null;
   if(pid&&!plot&&plotsLoaded){location.hash="";return}
+  if(onPocket())return renderPocket();
+  $("pocket-people").hidden=true;$("nav-sec").hidden=!!pid;
+  {const sp=document.querySelector(".split");sp.children[0].firstChild.textContent="إجمالي الوارد";sp.children[1].firstChild.textContent="إجمالي المنصرف"}
+  $("add-h").parentElement.hidden=false;$("t-in").parentElement.hidden=false;$("type-tabs").hidden=false;$("src-field").hidden=type==="in";
   const onPlot=!!pid;
   const scope=onPlot?entries.filter(e=>e.plotId===pid):entries;
   const t=totals(scope);
+  const myEmail=me&&me.email;
+  $("nav-pocket").textContent=fmt(entries.filter(e=>e.pocket&&e.pocket===myEmail&&!e.settled).reduce((a,e)=>a+e.amount,0));
 
   // header
   $("back").hidden=!onPlot;
@@ -488,7 +561,7 @@ function render(){
   $("today").hidden=onPlot;
   $("plot-meta").hidden=!plot;
   if(plot)$("plot-meta").replaceChildren(h("span",{class:"chip "+plot.season,text:seasonText(plot)}),
-    h("span",{text:(plot.crop||"بدون زرعة")+" · "+areaText(plot.areaQirat)}));
+    h("span",{text:(plot.crop||"بدون زرعة")+" · "+areaText(plot.areaQirat)+(plot.owner==="rent"?" · إيجار":" · ملك")}));
   $("bal-label").textContent=onPlot?"صافي القطعة (الوارد − المنصرف)":"الرصيد الكلي (الوارد − المنصرف)";
   $("tin").textContent=fmt(t.tin);$("tout").textContent=fmt(t.tout);$("bal").textContent=signed(t.net);
   const fed=plot?(+plot.areaQirat||0)/24:0;
@@ -497,6 +570,8 @@ function render(){
 
   // sections
   $("plots-sec").hidden=onPlot;$("plot-admin").hidden=!plot;$("plot-field").hidden=onPlot;
+  $("tools-h").parentElement.hidden=false;
+  renderRent(plot);
   $("add-h").textContent=plot?"تسجيل حركة على "+plot.name:"تسجيل حركة";
   $("led-h").textContent=onPlot?"دفتر القطعة":"الدفتر";
   if(!onPlot)renderPlots();
@@ -506,6 +581,10 @@ function render(){
 
 function renderPlots(){
   const box=$("plots");
+  const rented=plots.filter(p=>p.owner==="rent"&&p.rentTotal);
+  const leftAll=rented.reduce((a,p)=>a+Math.max(0,p.rentTotal-rentPaid(p.id)),0);
+  $("rent-total-line").hidden=!rented.length;
+  $("rent-total-line").replaceChildren("إجمالي الإيجار المتبقي على كل القطع: ",h("b",{class:"num"+(leftAll?"":" done"),text:leftAll?fmt(leftAll)+" جنيه":"خالص"}));
   if(!plotsLoaded){box.replaceChildren(h("div",{class:"empty small",text:"جارٍ تحميل القطع…"}));return}
   const list=plots.filter(p=>seasonFilter==="all"||p.season===seasonFilter).sort(sortPlots);
   if(!plots.length){box.replaceChildren(h("div",{class:"empty small",text:"لسه مفيش قطع. دوس \"+ قطعة جديدة\" واكتب اسمها ومساحتها والزرعة والموسم، وهيبقالها صفحة بحساباتها."}));return}
@@ -515,15 +594,18 @@ function renderPlots(){
     return h("button",{type:"button",class:"plot-card",onclick:()=>{location.hash="plot-"+p.id}},
       h("div",{class:"top"},h("span",{class:"name",text:p.name}),h("span",{class:"chip "+p.season,text:seasonText(p)})),
       h("div",{class:"sub",text:(p.crop||"بدون زرعة")+" · "+areaText(p.areaQirat)}),
+      p.owner==="rent"&&p.rentTotal?(()=>{const left=Math.max(0,p.rentTotal-rentPaid(p.id));
+        return h("div",{class:"rent-line"},"إيجار"+(p.landlord?" ("+p.landlord+")":"")+" · ",left?h("span",null,"متبقي ",h("b",{class:"num",text:fmt(left)})):h("b",{class:"done",text:"خالص"}))})():null,
       h("div",{class:"nets"},
         h("span",null,"الصافي ",h("b",{class:"num "+(t.net<0?"neg":"pos"),text:signed(t.net)})),
         fed>0&&(t.tin||t.tout)?h("span",null,"للفدان ",h("b",{class:"num",text:signed(t.net/fed)})):h("span",{text:t.tin||t.tout?"":"مفيش حركات"})));
   }));
 }
 
-function renderLedger(scope,onPlot){
+function renderLedger(scope,onPlot,pocketMode){
   const box=$("ledger");
-  const list=scope.filter(e=>filter==="all"||e.type===filter).sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
+  const list=scope.filter(e=>pocketMode||filter==="all"||e.type===filter).sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
+  if(!scope.length&&pocketMode){box.replaceChildren(h("div",{class:"empty",text:"مفيش مصاريف مدفوعة من الجيب لسه. لما تسجّل مصروف دفعته من فلوسك، اختار \"من جيبي الخاص\" وهيظهر هنا."}));return}
   if(!scope.length){box.replaceChildren(h("div",{class:"empty",text:onPlot?"لسه مفيش حركات على القطعة دي. سجّل أول مصروف ليها من الفورم اللي فوق.":"لسه مفيش حركات. سجّل أول مصروف أو وارد من الفورم اللي فوق، وهيظهر هنا عندك وعند شريكك."}));return}
   if(!list.length){box.replaceChildren(h("div",{class:"empty",text:"مفيش حركات من النوع ده."}));return}
   const groups=new Map();
@@ -536,15 +618,19 @@ function renderLedger(scope,onPlot){
       h("ul",{class:"entries"},...g.map(e=>{
         const p=!onPlot&&e.plotId?plotById(e.plotId):null;
         const confirming=pendingDel===e.id;
-        return h("li",{class:"entry"},
+        return h("li",{class:"entry"+(pocketMode&&e.settled?" settled":"")},
           h("div",{class:"day"},h("b",{class:"num",text:+e.date.slice(8)}),MONTHS[+m-1].slice(0,3)),
           h("div",{class:"what"},
             p?h("span",{class:"tag",text:p.name}):null,
+            !pocketMode&&e.pocket?h("span",{class:"pocket-tag",text:"من جيب "+shortName(e.pocket)}):null,
+            pocketMode&&e.plotId&&plotById(e.plotId)&&onPlot?h("span",{class:"tag",text:plotById(e.plotId).name}):null,
             h("span",{class:"cat",text:e.cat||""}),
             e.note?h("span",{class:"note",style:"display:block",text:e.note}):null,
             e.by?h("span",{class:"who",text:"سجّلها: "+shortName(e.by)}):null),
           h("div",null,
             h("div",{class:"amt "+e.type},h("span",{class:"num",text:(e.type==="in"?"+":"−")+fmt(e.amount)})),
+            pocketMode?h("button",{type:"button",class:"settle"+(e.settled?" done":""),text:e.settled?"اتسدّد ✓":"لسه ماتسدّدش",
+              onclick:()=>{col.doc(e.id).set({settled:!e.settled},{merge:true}).catch(err=>{$("status").textContent=friendlyErr(err)})}}):null,
             h("button",{type:"button",class:"del"+(confirming?" confirm":""),text:confirming?"تأكيد الحذف؟":"حذف",onclick:()=>{
               if(!confirming){pendingDel=e.id;render();return}
               pendingDel=null;col.doc(e.id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
@@ -552,6 +638,47 @@ function renderLedger(scope,onPlot){
       })));
   }));
 }
+
+function renderRent(plot){
+  const on=!!(plot&&plot.owner==="rent");$("rent-sec").hidden=!on;if(!on)return;
+  const total=+plot.rentTotal||0, paid=rentPaid(plot.id), left=Math.max(0,total-paid), fed=(+plot.areaQirat||0)/24;
+  $("rent-who").textContent="المؤجر: "+(plot.landlord||"—")+(fed>0&&total?" · إيجار الفدان "+fmt(total/fed)+" جنيه":"");
+  $("r-total").textContent=fmt(total);$("r-paid").textContent=fmt(paid);
+  $("r-left").textContent=left?fmt(left):"خالص";$("r-left").className="num "+(left?"neg":"pos");
+  $("r-meter").style.width=(total?Math.min(100,paid/total*100):0)+"%";
+  $("pay-rent").hidden=!left;
+}
+
+function renderPocket(){
+  const myEmail=(me&&me.email)||"";
+  const people=[...new Set([myEmail,...entries.filter(e=>e.pocket).map(e=>e.pocket)])].filter(Boolean);
+  if(!pocketPerson||!people.includes(pocketPerson))pocketPerson=myEmail;
+  const mine=pocketPerson===myEmail;
+  const scope=entries.filter(e=>e.pocket===pocketPerson);
+  const total=scope.reduce((a,e)=>a+e.amount,0), settled=scope.filter(e=>e.settled).reduce((a,e)=>a+e.amount,0);
+  // header
+  $("back").hidden=false;$("today").hidden=true;$("plot-meta").hidden=true;$("perfed").hidden=true;
+  $("title").textContent=mine?"المدفوع من جيبي":"المدفوع من جيب "+shortName(pocketPerson);
+  $("bal-label").textContent=mine?"ليّا (لسه ماتسدّدش من فلوس الأرض)":"ليه (لسه ماتسدّدش من فلوس الأرض)";
+  $("bal").textContent=fmt(total-settled);
+  const sp=document.querySelector(".split");sp.hidden=false;
+  sp.children[0].firstChild.textContent="إجمالي المدفوع";$("tin").textContent=fmt(total);
+  sp.children[1].firstChild.textContent="اتسدّد";$("tout").textContent=fmt(settled);
+  // sections
+  ["plots-sec","plot-admin","rent-sec","nav-sec","cat-sec","plot-form-sec"].forEach(id=>$(id).hidden=true);
+  $("tools-h").parentElement.hidden=true;
+  $("type-tabs").hidden=true;
+  $("pocket-people").hidden=people.length<2;
+  $("people-tabs").replaceChildren(...people.map(em=>h("button",{type:"button","aria-pressed":String(em===pocketPerson),
+    text:em===myEmail?"أنا":shortName(em),onclick:()=>{pocketPerson=em;render()}})));
+  // form: expenses only, paid from my pocket
+  $("add-h").parentElement.hidden=!mine;setTypeQuiet("out");
+  $("t-in").parentElement.hidden=true;$("src-field").hidden=true;$("plot-field").hidden=false;
+  $("add-h").textContent="تسجيل مصروف دفعته من جيبي";
+  $("led-h").textContent=mine?"اللي دفعته":"اللي دفعه "+shortName(pocketPerson);
+  renderLedger(scope,true,true);
+}
+function setTypeQuiet(t){if(type!==t){type=t;$("t-in").setAttribute("aria-pressed",t==="in");$("t-out").setAttribute("aria-pressed",t==="out");fillCats()}}
 
 function renderCats(scope,tout){
   const by={};for(const e of scope)if(e.type==="out")by[e.cat]=(by[e.cat]||0)+e.amount;
