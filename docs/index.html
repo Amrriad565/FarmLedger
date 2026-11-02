@@ -161,6 +161,9 @@ ul.entries{list-style:none;margin:0;padding:0}
 .rent-line b{color:var(--out)}
 .rent-line b.done{color:var(--in)}
 .nav-row{display:flex;gap:8px;flex-wrap:wrap}
+#nav-sec{display:grid;gap:8px}
+.led-note{font-size:.85rem;color:var(--muted);margin:10px 0 0}
+.led-note button{font:inherit;font-weight:700;border:0;background:none;color:var(--accent);cursor:pointer;padding:0}
 .nav-btn{font:inherit;font-weight:700;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:12px;padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%}
 .nav-btn .num{color:var(--out)}
 .pocket-tag{font-size:.75rem;color:var(--summer);font-weight:700;display:block}
@@ -262,6 +265,7 @@ ul.entries{list-style:none;margin:0;padding:0}
   </section>
 
   <section id="nav-sec" aria-label="صفحات">
+    <button type="button" class="nav-btn" id="go-rents"><span>الإيجارات والمستأجرين</span><span>متبقي <b class="num" id="nav-rents">0</b> ←</span></button>
     <button type="button" class="nav-btn" id="go-pocket"><span>المصاريف المدفوعة من جيبي</span><span>ليّا <b class="num" id="nav-pocket">0</b> ←</span></button>
   </section>
 
@@ -290,7 +294,7 @@ ul.entries{list-style:none;margin:0;padding:0}
       <label>المبلغ بالجنيه
         <input id="amount" inputmode="decimal" autocomplete="off" placeholder="0">
       </label>
-      <label id="plot-field">القطعة<select id="e-plot"></select></label>
+      <label id="plot-field"><span id="plot-field-l">القطعة</span><select id="e-plot"></select></label>
       <label id="src-field">اتدفع منين؟<select id="e-src"><option value="">من فلوس الأرض</option><option value="me">من جيبي الخاص</option></select></label>
       <div class="row">
         <label>البند<select id="cat"></select></label>
@@ -313,6 +317,7 @@ ul.entries{list-style:none;margin:0;padding:0}
       <button type="button" data-f="out" aria-pressed="false">المنصرف</button>
     </div>
     <div id="ledger"><div class="empty">جارٍ تحميل الحسابات…</div></div>
+    <p class="led-note" id="led-note" hidden>حركات المستأجرين محسوبة في الإجماليات وموجودة في <button type="button" id="go-rents2">صفحة الإيجارات</button>.</p>
   </section>
 
   <section aria-labelledby="cat-h" id="cat-sec" hidden>
@@ -410,6 +415,9 @@ function sortPlots(a,b){return (+b.year||0)-(+a.year||0)||(a.season===b.season?0
 /* ---------- routing ---------- */
 function currentPlotId(){const m=location.hash.match(/^#plot-([A-Za-z0-9_-]+)$/);return m?m[1]:null}
 const onPocket=()=>location.hash==="#pocket";
+const onRents=()=>location.hash==="#rents";
+$("go-rents").onclick=$("go-rents2").onclick=()=>{location.hash="rents"};
+function isTenantEntry(e){const p=e.plotId?plotById(e.plotId):null;return !!(p&&p.owner==="rent")}
 $("go-pocket").onclick=()=>{location.hash="pocket"};
 window.addEventListener("hashchange",()=>{pendingDel=null;editingEntry=null;$("amount").value="";$("note").value="";closePlotForm();$("del-confirm").hidden=true;render();window.scrollTo(0,0)});
 $("back").onclick=()=>{if(history.length>1&&location.hash)history.back();else location.hash=""};
@@ -425,8 +433,8 @@ document.querySelectorAll("#season-tabs button").forEach(b=>b.onclick=()=>{
 
 function fillPlotSelect(){
   const sel=$("e-plot"), keep=sel.value;
-  sel.replaceChildren(h("option",{value:"",text:"عام (مش تابع لقطعة)"}),
-    ...[...plots].sort(sortPlots).map(p=>h("option",{value:p.id,text:p.owner==="rent"?p.name+" · مؤجّرة":p.name+" · "+(p.crop||"")+" · "+seasonText(p)})));
+  sel.replaceChildren(...(onRents()?[h("option",{value:"",text:"اختار الحوض"})]:[h("option",{value:"",text:"عام (مش تابع لقطعة)"})]),
+    ...[...plots].filter(p=>!onRents()||p.owner==="rent").sort(sortPlots).map(p=>h("option",{value:p.id,text:p.owner==="rent"?p.name+" · مؤجّرة":p.name+" · "+(p.crop||"")+" · "+seasonText(p)})));
   if([...sel.options].some(o=>o.value===keep))sel.value=keep;
 }
 
@@ -446,7 +454,8 @@ $("form").addEventListener("submit",e=>{
     return;
   }
   const pid=currentPlotId()&&plotById(currentPlotId())?currentPlotId():$("e-plot").value;
-  const t=onPocket()?"out":type;
+  if(onRents()&&!pid){$("msg").textContent="اختار الحوض اللي المستأجر دفع عنه.";$("e-plot").focus();return}
+  const t=onPocket()?"out":onRents()?"in":type;
   const pocket=t==="out"&&(onPocket()||$("e-src").value==="me")?(me.email||""):"";
   col.add({type:t,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),plotId:pid||"",pocket,settled:false,created:Date.now(),by:me.email||""})
     .catch(err=>{$("msg").textContent=friendlyErr(err)});
@@ -500,7 +509,7 @@ function openPlotForm(p){
   const q=p?+p.areaQirat||0:0;$("p-fed").value=p?Math.floor(q/24):"";$("p-qir").value=p?Math.round(q-Math.floor(q/24)*24)||"":"";
   $("p-landlord").value=p?p.landlord||"":"";
   $("p-perq").value=p&&p.owner==="rent"?(p.rentPerQirat||(p.areaQirat?Math.round((+p.rentTotal||0)/p.areaQirat):"")||""):"";
-  setPOwner(p?(p.owner==="rent"?"rent":"own"):"rent");
+  setPOwner(p?(p.owner==="rent"?"rent":"own"):(onRents()?"rent":"own"));
   $("p-msg").textContent="";$("plot-form-sec").hidden=false;
   $("plot-form-sec").scrollIntoView({behavior:"smooth",block:"start"});$("p-name").focus({preventScroll:true});
 }
@@ -605,7 +614,11 @@ if(!window.FIREBASE_CONFIG||!window.firebase){
 function render(){
   const pid=currentPlotId(), plot=pid?plotById(pid):null;
   if(pid&&!plot&&plotsLoaded){location.hash="";return}
+  fillPlotSelect();
   if(onPocket())return renderPocket();
+  if(onRents())return renderRents();
+  $("plots-h").textContent="القطع";$("season-tabs").hidden=false;$("led-note").hidden=true;
+  $("plot-field-l").textContent="القطعة";$("add-plot").textContent="+ قطعة جديدة";
   $("pocket-people").hidden=true;$("nav-sec").hidden=!!pid;
   {const sp=document.querySelector(".split");sp.children[0].firstChild.textContent="إجمالي الوارد";sp.children[1].firstChild.textContent="إجمالي المنصرف"}
   $("add-h").parentElement.hidden=false;$("t-in").parentElement.hidden=false;$("type-tabs").hidden=false;$("src-field").hidden=type==="in";
@@ -613,6 +626,7 @@ function render(){
   const scope=onPlot?entries.filter(e=>e.plotId===pid):entries;
   const t=totals(scope);
   const myEmail=me&&me.email;
+  $("nav-rents").textContent=fmt(rentLeftAll());
   $("nav-pocket").textContent=fmt(entries.filter(e=>e.pocket&&e.pocket===myEmail&&!e.settled).reduce((a,e)=>a+e.amount,0));
 
   // header
@@ -636,19 +650,25 @@ function render(){
   $("add-h").textContent=plot?"تسجيل حركة على "+plot.name:"تسجيل حركة";
   $("led-h").textContent=onPlot?"دفتر القطعة":"الدفتر";
   if(!onPlot)renderPlots();
-  renderLedger(scope,onPlot);
+  const tenantCount=onPlot?0:scope.filter(isTenantEntry).length;
+  renderLedger(onPlot?scope:scope.filter(e=>!isTenantEntry(e)),onPlot);
+  $("led-note").hidden=!tenantCount;
   renderCats(scope,t.tout);
   applyEditUI();
 }
 
 function renderPlots(){
   const box=$("plots");
+  const rentsView=onRents();
   const rented=plots.filter(p=>p.owner==="rent"&&p.rentTotal);
-  const leftAll=rented.reduce((a,p)=>a+Math.max(0,p.rentTotal-rentPaid(p.id)),0);
-  $("rent-total-line").hidden=!rented.length;
+  const leftAll=rentLeftAll();
+  $("rent-total-line").hidden=true;
   $("rent-total-line").replaceChildren("إيجارات لسه ماتحصّلتش: ",h("b",{class:"num"+(leftAll?"":" done"),text:leftAll?fmt(leftAll)+" جنيه":"خالص"}));
   if(!plotsLoaded){box.replaceChildren(h("div",{class:"empty small",text:"جارٍ تحميل القطع…"}));return}
-  const list=plots.filter(p=>seasonFilter==="all"||(p.owner!=="rent"&&p.season===seasonFilter)).sort(sortPlots);
+  const pool=plots.filter(p=>rentsView?p.owner==="rent":p.owner!=="rent");
+  const list=pool.filter(p=>rentsView||seasonFilter==="all"||p.season===seasonFilter).sort(sortPlots);
+  if(rentsView&&!pool.length){box.replaceChildren(h("div",{class:"empty small",text:"لسه مفيش أحواض مؤجّرة. دوس \"+ قطعة جديدة\" واكتب اسم الحوض ومساحته وإيجار القيراط."}));return}
+  if(!rentsView&&!pool.length&&plots.length){box.replaceChildren(h("div",{class:"empty small",text:"مفيش قطع بتزرعوها. الأحواض المؤجّرة في صفحة الإيجارات."}));return}
   if(!plots.length){box.replaceChildren(h("div",{class:"empty small",text:"لسه مفيش قطع. دوس \"+ قطعة جديدة\" واكتب اسمها ومساحتها والزرعة والموسم، وهيبقالها صفحة بحساباتها."}));return}
   if(!list.length){box.replaceChildren(h("div",{class:"empty small",text:"مفيش قطع في الموسم ده."}));return}
   box.replaceChildren(...list.map(p=>{
@@ -657,7 +677,11 @@ function renderPlots(){
       h("div",{class:"top"},h("span",{class:"name",text:p.name}),p.owner==="rent"?h("span",{class:"chip summer",text:"مؤجّرة"}):h("span",{class:"chip "+p.season,text:seasonText(p)})),
       h("div",{class:"sub",text:p.owner==="rent"?areaText(p.areaQirat)+(p.rentPerQirat?" · القيراط "+fmt(p.rentPerQirat):""):(p.crop||"بدون زرعة")+" · "+areaText(p.areaQirat)}),
       p.owner==="rent"&&p.rentTotal?(()=>{const left=Math.max(0,p.rentTotal-rentPaid(p.id));
-        return h("div",{class:"rent-line"},"مؤجّرة"+(p.landlord?" لـ "+p.landlord:"")+" · ",left?h("span",null,"متبقي عليه ",h("b",{class:"num",text:fmt(left)})):h("b",{class:"done",text:"خالص"}))})():null,
+        const over=rentPaid(p.id)-p.rentTotal;
+        return h("div",{class:"rent-line"},"مؤجّرة"+(p.landlord?" لـ "+p.landlord:"")+" · ",left?h("span",null,"متبقي عليه ",h("b",{class:"num",text:fmt(left)})):h("b",{class:"done",text:over>0?"خالص (زيادة "+fmt(over)+")":"خالص"}))})():null,
+      p.owner==="rent"?h("div",{class:"nets"},
+        h("span",null,"اتحصّل ",h("b",{class:"num pos",text:fmt(rentPaid(p.id))})),
+        h("span",null,"من ",h("b",{class:"num",text:fmt(+p.rentTotal||0)}))):
       h("div",{class:"nets"},
         h("span",null,"الصافي ",h("b",{class:"num "+(t.net<0?"neg":"pos"),text:signed(t.net)})),
         fed>0&&(t.tin||t.tout)?h("span",null,"للفدان ",h("b",{class:"num",text:signed(t.net/fed)})):h("span",{text:t.tin||t.tout?"":"مفيش حركات"})));
@@ -710,9 +734,39 @@ function renderRent(plot){
   const pq=+plot.rentPerQirat||(plot.areaQirat?total/plot.areaQirat:0);
   $("rent-who").textContent=(plot.landlord?"المستأجر: "+plot.landlord+" · ":"")+"إيجار القيراط "+fmt(pq)+" جنيه × "+(+plot.areaQirat||0)+" قيراط";
   $("r-total").textContent=fmt(total);$("r-paid").textContent=fmt(paid);
-  $("r-left").textContent=left?fmt(left):"خالص";$("r-left").className="num "+(left?"neg":"pos");
+  $("r-left").textContent=left?fmt(left):(paid>total?"خالص +"+fmt(paid-total):"خالص");$("r-left").className="num "+(left?"neg":"pos");
   $("r-meter").style.width=(total?Math.min(100,paid/total*100):0)+"%";
   $("pay-rent").hidden=!left;
+}
+
+function rentLeftAll(){return plots.filter(p=>p.owner==="rent"&&p.rentTotal).reduce((a,p)=>a+Math.max(0,p.rentTotal-rentPaid(p.id)),0)}
+
+function renderRents(){
+  const rented=plots.filter(p=>p.owner==="rent");
+  const total=rented.reduce((a,p)=>a+(+p.rentTotal||0),0);
+  const tenant=entries.filter(isTenantEntry);
+  const collected=rented.reduce((a,p)=>a+rentPaid(p.id),0);
+  // header
+  $("back").hidden=false;$("today").hidden=true;$("plot-meta").hidden=true;$("perfed").hidden=true;
+  $("title").textContent="الإيجارات";
+  $("bal-label").textContent="متبقي على المستأجرين";$("bal").textContent=fmt(rentLeftAll());
+  const sp=document.querySelector(".split");
+  sp.children[0].firstChild.textContent="إجمالي الإيجارات";$("tin").textContent=fmt(total);
+  sp.children[1].firstChild.textContent="اتحصّل";$("tout").textContent=fmt(collected);
+  // sections
+  ["plot-admin","rent-sec","nav-sec","cat-sec","pocket-people","type-tabs","led-note"].forEach(id=>$(id).hidden=true);
+  $("tools-h").parentElement.hidden=true;
+  $("plots-sec").hidden=false;$("plots-h").textContent="الأحواض المؤجّرة";$("season-tabs").hidden=true;
+  renderPlots();
+  // form: collect rent
+  $("add-h").parentElement.hidden=!rented.length;$("add-h").textContent="تحصيل إيجار";
+  if(!editingEntry){setTypeQuiet("in");if($("cat").value!==RENT_CAT&&!$("note").value)$("cat").value=RENT_CAT}
+  $("t-in").parentElement.hidden=true;$("src-field").hidden=true;$("plot-field").hidden=false;
+  $("led-h").textContent="حركات المستأجرين";
+  $("plot-field-l").textContent="الحوض";$("add-plot").textContent="+ حوض جديد";
+  renderLedger(tenant,false);
+  if(!tenant.length)$("ledger").replaceChildren(h("div",{class:"empty",text:"لسه مفيش تحصيلات. اختار الحوض واكتب المبلغ اللي المستأجر دفعه."}));
+  applyEditUI();
 }
 
 function renderPocket(){
@@ -731,7 +785,7 @@ function renderPocket(){
   sp.children[0].firstChild.textContent="إجمالي المدفوع";$("tin").textContent=fmt(total);
   sp.children[1].firstChild.textContent="اتسدّد";$("tout").textContent=fmt(settled);
   // sections
-  ["plots-sec","plot-admin","rent-sec","nav-sec","cat-sec","plot-form-sec"].forEach(id=>$(id).hidden=true);
+  ["plots-sec","plot-admin","rent-sec","nav-sec","cat-sec","plot-form-sec","led-note"].forEach(id=>$(id).hidden=true);
   $("tools-h").parentElement.hidden=true;
   $("type-tabs").hidden=true;
   $("pocket-people").hidden=people.length<2;
