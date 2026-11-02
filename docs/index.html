@@ -177,6 +177,14 @@ ul.entries{list-style:none;margin:0;padding:0}
 .row-acts .del{margin:0}
 .sheet.editing{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
 .entry.being-edited{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.plot-card{padding:0;gap:0;cursor:default}
+.card-main{display:grid;gap:4px;text-align:start;font:inherit;color:inherit;background:none;border:0;padding:14px 14px 10px;cursor:pointer;width:100%}
+.card-acts{display:flex;gap:16px;justify-content:flex-end;padding:0 14px 10px}
+.card-acts button{font:inherit;font-size:.82rem;font-weight:700;border:0;background:none;cursor:pointer;padding:2px 0}
+.card-acts .edit{color:var(--accent)} .card-acts .del{color:var(--out)}
+.plot-card .confirm-box{margin:0 10px 10px}
+.del-acts{flex-wrap:wrap}
+#plot-admin .plot-actions button{flex:1}
 </style>
 </head>
 <body>
@@ -214,6 +222,17 @@ ul.entries{list-style:none;margin:0;padding:0}
 
 <main>
 <div class="wrap">
+
+  <section id="plot-admin" hidden aria-label="تعديل أو مسح القطعة">
+    <div class="plot-actions">
+      <button type="button" class="plain" id="edit-plot">تعديل البيانات</button>
+      <button type="button" class="danger" id="del-plot">مسح القطعة</button>
+    </div>
+    <div id="del-confirm" class="confirm-box" hidden>
+      <span id="del-text"></span>
+      <div class="acts del-acts"><button type="button" class="go" id="d-all">امسح القطعة وحركاتها</button><button type="button" id="d-only">امسح القطعة بس</button><button type="button" id="d-no">إلغاء</button></div>
+    </div>
+  </section>
 
   <section id="plot-form-sec" hidden aria-labelledby="pf-h">
     <h2 id="pf-h">قطعة جديدة</h2>
@@ -325,17 +344,6 @@ ul.entries{list-style:none;margin:0;padding:0}
     <div class="cats" id="cats"></div>
   </section>
 
-  <section id="plot-admin" hidden aria-labelledby="pa-h">
-    <h2 id="pa-h">إعدادات القطعة</h2>
-    <div class="plot-actions">
-      <button type="button" class="plain" id="edit-plot">تعديل البيانات</button>
-      <button type="button" class="danger" id="del-plot">حذف القطعة</button>
-    </div>
-    <div id="del-confirm" class="confirm-box" hidden>
-      <span id="del-text"></span>
-      <div class="acts"><button type="button" class="go" id="d-yes">حذف</button><button type="button" id="d-no">إلغاء</button></div>
-    </div>
-  </section>
 
   <section aria-labelledby="tools-h">
     <h2 id="tools-h">تصدير واستيراد</h2>
@@ -378,7 +386,7 @@ const shortName=email=>(email||"").split("@")[0];
 
 let type="out", filter="all", seasonFilter="all";
 let entries=[], plots=[], plotsLoaded=false;
-let editingEntry=null;
+let editingEntry=null, pendingPlotDel=null;
 let pendingDel=null, pendingRestore=null, editingPlot=null, pSeason="winter", pOwner="own", pocketPerson=null;
 const RENT_CAT="إيجار أرض (محصل)";
 let col=null, plotsCol=null, fs=null, me=null, unsubs=[];
@@ -544,13 +552,27 @@ $("plot-form").addEventListener("submit",e=>{
     closePlotForm();location.hash="plot-"+ref.id;
   }
 });
+function plotDelText(p){const n=entries.filter(e=>e.plotId===p.id).length;
+  return n?"\""+p.name+"\" عليها "+n+" حركة. تمسح الحركات معاها ولا تسيبها في الدفتر العام؟":"متأكد إنك عايز تمسح \""+p.name+"\"؟"}
+async function deletePlot(id,withEntries){
+  const ids=withEntries?entries.filter(e=>e.plotId===id).map(e=>e.id):[];
+  if(editingEntry&&ids.includes(editingEntry.id))editingEntry=null;
+  try{
+    for(let i=0;i<ids.length;i+=400){const b=fs.batch();ids.slice(i,i+400).forEach(x=>b.delete(col.doc(x)));b.commit().catch(err=>{$("status").textContent=friendlyErr(err)})}
+    plotsCol.doc(id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
+    $("status").textContent=withEntries&&ids.length?"اتمسحت القطعة و"+ids.length+" حركة.":"اتمسحت القطعة.";
+  }catch(err){$("status").textContent=friendlyErr(err)}
+}
 $("del-plot").onclick=()=>{
-  const id=currentPlotId(),p=plotById(id);if(!p)return;
-  const n=entries.filter(e=>e.plotId===id).length;
-  $("del-text").textContent="هتتمسح القطعة \""+p.name+"\"."+(n?" الحركات المسجّلة عليها ("+n+") هتفضل في الدفتر العام.":"");
+  const p=plotById(currentPlotId());if(!p)return;
+  const n=entries.filter(e=>e.plotId===p.id).length;
+  $("del-text").textContent=plotDelText(p);$("d-all").hidden=!n;$("d-only").textContent=n?"امسح القطعة بس":"امسح";
   $("del-confirm").hidden=false;
 };
 $("d-no").onclick=()=>{$("del-confirm").hidden=true};
+const backAfterDelete=()=>{if(history.length>1)history.back();else location.hash=""};
+$("d-all").onclick=()=>{const id=currentPlotId();$("del-confirm").hidden=true;deletePlot(id,true);backAfterDelete()};
+$("d-only").onclick=()=>{const id=currentPlotId();$("del-confirm").hidden=true;deletePlot(id,false);backAfterDelete()};
 $("pay-rent").onclick=()=>{
   const p=plotById(currentPlotId());if(!p)return;
   setType("in");$("cat").value=RENT_CAT;$("note").value=p.landlord?"إيجار من "+p.landlord:"قسط إيجار";
@@ -558,8 +580,6 @@ $("pay-rent").onclick=()=>{
   $("form").scrollIntoView({behavior:"smooth",block:"start"});$("amount").focus({preventScroll:true});
 };
 function rentPaid(pid){let s=0;for(const e of entries)if(e.plotId===pid&&e.type==="in"&&e.cat===RENT_CAT)s+=e.amount;return s}
-$("d-yes").onclick=()=>{const id=currentPlotId();$("del-confirm").hidden=true;
-  plotsCol.doc(id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});location.hash=""};
 
 /* ---------- Firebase ---------- */
 function setSync(state,text){$("sync").className="sync "+state;$("sync-t").textContent=text}
@@ -673,7 +693,8 @@ function renderPlots(){
   if(!list.length){box.replaceChildren(h("div",{class:"empty small",text:"مفيش قطع في الموسم ده."}));return}
   box.replaceChildren(...list.map(p=>{
     const t=totals(entries.filter(e=>e.plotId===p.id)), fed=(+p.areaQirat||0)/24;
-    return h("button",{type:"button",class:"plot-card",onclick:()=>{location.hash="plot-"+p.id}},
+    const n=entries.filter(e=>e.plotId===p.id).length, confirming=pendingPlotDel===p.id;
+    return h("div",{class:"plot-card"},h("button",{type:"button",class:"card-main",onclick:()=>{location.hash="plot-"+p.id}},
       h("div",{class:"top"},h("span",{class:"name",text:p.name}),p.owner==="rent"?h("span",{class:"chip summer",text:"مؤجّرة"}):h("span",{class:"chip "+p.season,text:seasonText(p)})),
       h("div",{class:"sub",text:p.owner==="rent"?areaText(p.areaQirat)+(p.rentPerQirat?" · القيراط "+fmt(p.rentPerQirat):""):(p.crop||"بدون زرعة")+" · "+areaText(p.areaQirat)}),
       p.owner==="rent"&&p.rentTotal?(()=>{const left=Math.max(0,p.rentTotal-rentPaid(p.id));
@@ -684,7 +705,15 @@ function renderPlots(){
         h("span",null,"من ",h("b",{class:"num",text:fmt(+p.rentTotal||0)}))):
       h("div",{class:"nets"},
         h("span",null,"الصافي ",h("b",{class:"num "+(t.net<0?"neg":"pos"),text:signed(t.net)})),
-        fed>0&&(t.tin||t.tout)?h("span",null,"للفدان ",h("b",{class:"num",text:signed(t.net/fed)})):h("span",{text:t.tin||t.tout?"":"مفيش حركات"})));
+        fed>0&&(t.tin||t.tout)?h("span",null,"للفدان ",h("b",{class:"num",text:signed(t.net/fed)})):h("span",{text:t.tin||t.tout?"":"مفيش حركات"}))),
+      confirming?h("div",{class:"confirm-box"},h("span",{text:plotDelText(p)}),
+        h("div",{class:"acts del-acts"},
+          n?h("button",{type:"button",class:"go",text:"امسح القطعة وحركاتها",onclick:()=>{pendingPlotDel=null;deletePlot(p.id,true);render()}}):null,
+          h("button",{type:"button",class:n?"":"go",text:n?"امسح القطعة بس":"امسح",onclick:()=>{pendingPlotDel=null;deletePlot(p.id,false);render()}}),
+          h("button",{type:"button",text:"إلغاء",onclick:()=>{pendingPlotDel=null;render()}}))):
+      h("div",{class:"card-acts"},
+        h("button",{type:"button",class:"edit",text:"تعديل",onclick:()=>openPlotForm(p)}),
+        h("button",{type:"button",class:"del",text:"مسح",onclick:()=>{pendingPlotDel=p.id;render()}})));
   }));
 }
 

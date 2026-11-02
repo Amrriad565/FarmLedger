@@ -1,5 +1,5 @@
 // App-shell cache so the app opens without internet. Firestore keeps its own offline copy of the data.
-const CACHE = "farm-ledger-v7";
+const CACHE = "farm-ledger-v8";
 const SHELL = ["./", "index.html", "config.js", "manifest.webmanifest", "icon-192.png", "apple-touch-icon.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
