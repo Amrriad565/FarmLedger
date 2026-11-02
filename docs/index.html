@@ -169,6 +169,11 @@ ul.entries{list-style:none;margin:0;padding:0}
 .entry.settled .amt{opacity:.55}
 .calc{background:var(--in-soft);color:var(--fg);border-radius:10px;padding:10px 12px;font-size:.92rem}
 .calc b{color:var(--in);font-size:1.15rem}
+.row-acts{display:flex;gap:12px;justify-content:flex-end;margin-top:2px}
+.edit{font:inherit;font-size:.78rem;border:0;background:none;color:var(--accent);cursor:pointer;padding:2px 0;font-weight:700}
+.row-acts .del{margin:0}
+.sheet.editing{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.entry.being-edited{background:color-mix(in srgb,var(--accent) 10%,transparent)}
 </style>
 </head>
 <body>
@@ -292,7 +297,10 @@ ul.entries{list-style:none;margin:0;padding:0}
         <label>التاريخ<input type="date" id="date"></label>
       </div>
       <label>البيان (اختياري)<input id="note" autocomplete="off" placeholder="مثال: ٤ شكاير يوريا"></label>
-      <button class="primary" type="submit" id="save">حفظ الحركة</button>
+      <div class="form-acts">
+        <button class="primary" type="submit" id="save">حفظ الحركة</button>
+        <button class="plain" type="button" id="cancel-edit" hidden>إلغاء التعديل</button>
+      </div>
       <p class="msg" id="msg" aria-live="polite"></p>
     </form>
   </section>
@@ -365,6 +373,7 @@ const shortName=email=>(email||"").split("@")[0];
 
 let type="out", filter="all", seasonFilter="all";
 let entries=[], plots=[], plotsLoaded=false;
+let editingEntry=null;
 let pendingDel=null, pendingRestore=null, editingPlot=null, pSeason="winter", pOwner="own", pocketPerson=null;
 const RENT_CAT="إيجار أرض (محصل)";
 let col=null, plotsCol=null, fs=null, me=null, unsubs=[];
@@ -402,7 +411,7 @@ function sortPlots(a,b){return (+b.year||0)-(+a.year||0)||(a.season===b.season?0
 function currentPlotId(){const m=location.hash.match(/^#plot-([A-Za-z0-9_-]+)$/);return m?m[1]:null}
 const onPocket=()=>location.hash==="#pocket";
 $("go-pocket").onclick=()=>{location.hash="pocket"};
-window.addEventListener("hashchange",()=>{pendingDel=null;closePlotForm();$("del-confirm").hidden=true;render();window.scrollTo(0,0)});
+window.addEventListener("hashchange",()=>{pendingDel=null;editingEntry=null;$("amount").value="";$("note").value="";closePlotForm();$("del-confirm").hidden=true;render();window.scrollTo(0,0)});
 $("back").onclick=()=>{if(history.length>1&&location.hash)history.back();else location.hash=""};
 
 /* ---------- entry form ---------- */
@@ -426,6 +435,16 @@ $("form").addEventListener("submit",e=>{
   const amt=parseFloat(normDigits($("amount").value.trim()));
   if(!(amt>0)){$("msg").textContent="اكتب المبلغ بالأرقام، أكبر من صفر.";$("amount").focus();return}
   if(!$("date").value){$("msg").textContent="اختار التاريخ.";return}
+  if(editingEntry){
+    const ed=editingEntry, t=type;
+    // keep a partner's pocket mark as it was; otherwise follow the "paid from" choice
+    const pocket=t!=="out"?"":(ed.pocket&&ed.pocket!==me.email?ed.pocket:($("e-src").value==="me"?(me.email||""):""));
+    col.doc(ed.id).set({type:t,amount:amt,cat:$("cat").value,date:$("date").value,note:$("note").value.trim(),
+      plotId:$("e-plot").value||"",pocket,settled:pocket?!!ed.settled:false,edited:Date.now(),editedBy:me.email||""},{merge:true})
+      .catch(err=>{$("status").textContent=friendlyErr(err)});
+    stopEdit();$("status").textContent="اتحفظ التعديل.";setTimeout(()=>{if($("status").textContent==="اتحفظ التعديل.")$("status").textContent=""},3000);
+    return;
+  }
   const pid=currentPlotId()&&plotById(currentPlotId())?currentPlotId():$("e-plot").value;
   const t=onPocket()?"out":type;
   const pocket=t==="out"&&(onPocket()||$("e-src").value==="me")?(me.email||""):"";
@@ -433,6 +452,29 @@ $("form").addEventListener("submit",e=>{
     .catch(err=>{$("msg").textContent=friendlyErr(err)});
   $("amount").value="";$("note").value="";$("msg").textContent="";
 });
+
+function startEdit(e){
+  editingEntry=e;pendingDel=null;
+  setType(e.type);
+  if(![...$("cat").options].some(o=>o.value===e.cat))$("cat").append(h("option",{text:e.cat}));
+  $("cat").value=e.cat;$("amount").value=String(e.amount);$("date").value=e.date;$("note").value=e.note||"";
+  fillPlotSelect();$("e-plot").value=plotById(e.plotId)?e.plotId:"";
+  $("e-src").value=e.pocket&&me&&e.pocket===me.email?"me":"";
+  $("msg").textContent="";render();
+  $("form").scrollIntoView({behavior:"smooth",block:"start"});$("amount").focus({preventScroll:true});
+}
+function stopEdit(){editingEntry=null;$("amount").value="";$("note").value="";$("msg").textContent="";$("date").value=todayISO();render()}
+$("cancel-edit").onclick=stopEdit;
+function applyEditUI(){
+  const ed=editingEntry;
+  $("form").classList.toggle("editing",!!ed);$("cancel-edit").hidden=!ed;
+  $("save").textContent=ed?"حفظ التعديل":"حفظ الحركة";
+  if(!ed)return;
+  $("add-h").parentElement.hidden=false;$("add-h").textContent="تعديل حركة";
+  $("t-in").parentElement.hidden=false;$("plot-field").hidden=false;
+  const partnerPocket=ed.pocket&&me&&ed.pocket!==me.email;
+  $("src-field").hidden=type==="in"||partnerPocket;
+}
 
 /* ---------- plot form ---------- */
 function setPSeason(s,keepYear){pSeason=s;$("p-win").setAttribute("aria-pressed",s==="winter");$("p-sum").setAttribute("aria-pressed",s==="summer");
@@ -596,6 +638,7 @@ function render(){
   if(!onPlot)renderPlots();
   renderLedger(scope,onPlot);
   renderCats(scope,t.tout);
+  applyEditUI();
 }
 
 function renderPlots(){
@@ -637,7 +680,7 @@ function renderLedger(scope,onPlot,pocketMode){
       h("ul",{class:"entries"},...g.map(e=>{
         const p=!onPlot&&e.plotId?plotById(e.plotId):null;
         const confirming=pendingDel===e.id;
-        return h("li",{class:"entry"+(pocketMode&&e.settled?" settled":"")},
+        return h("li",{class:"entry"+(pocketMode&&e.settled?" settled":"")+(editingEntry&&editingEntry.id===e.id?" being-edited":"")},
           h("div",{class:"day"},h("b",{class:"num",text:+e.date.slice(8)}),MONTHS[+m-1].slice(0,3)),
           h("div",{class:"what"},
             p?h("span",{class:"tag",text:p.name}):null,
@@ -650,10 +693,13 @@ function renderLedger(scope,onPlot,pocketMode){
             h("div",{class:"amt "+e.type},h("span",{class:"num",text:(e.type==="in"?"+":"−")+fmt(e.amount)})),
             pocketMode?h("button",{type:"button",class:"settle"+(e.settled?" done":""),text:e.settled?"اتسدّد ✓":"لسه ماتسدّدش",
               onclick:()=>{col.doc(e.id).set({settled:!e.settled},{merge:true}).catch(err=>{$("status").textContent=friendlyErr(err)})}}):null,
-            h("button",{type:"button",class:"del"+(confirming?" confirm":""),text:confirming?"تأكيد الحذف؟":"حذف",onclick:()=>{
-              if(!confirming){pendingDel=e.id;render();return}
-              pendingDel=null;col.doc(e.id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
-            }})));
+            h("div",{class:"row-acts"},
+              h("button",{type:"button",class:"edit",text:"تعديل",onclick:()=>startEdit(e)}),
+              h("button",{type:"button",class:"del"+(confirming?" confirm":""),text:confirming?"تأكيد الحذف؟":"حذف",onclick:()=>{
+                if(!confirming){pendingDel=e.id;render();return}
+                pendingDel=null;if(editingEntry&&editingEntry.id===e.id)stopEdit();
+                col.doc(e.id).delete().catch(err=>{$("status").textContent=friendlyErr(err)});
+              }}))));
       })));
   }));
 }
@@ -697,6 +743,7 @@ function renderPocket(){
   $("add-h").textContent="تسجيل مصروف دفعته من جيبي";
   $("led-h").textContent=mine?"اللي دفعته":"اللي دفعه "+shortName(pocketPerson);
   renderLedger(scope,true,true);
+  applyEditUI();
 }
 function setTypeQuiet(t){if(type!==t){type=t;$("t-in").setAttribute("aria-pressed",t==="in");$("t-out").setAttribute("aria-pressed",t==="out");fillCats()}}
 
